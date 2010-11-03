@@ -1,0 +1,18 @@
+CC = nvcc
+CFLAGS += 03
+
+BIN_DIR	= ./bin
+SRC_DIR	= ./src
+DOC_DIR	= ./docs
+INC_DIR	= ./include
+LIB_DIR	= ./lib
+
+md: graphic.o main.o molecule.o
+	cc $(LIB_DIR)/molecule.o $(LIB_DIR)/graphic.o $(LIB_DIR)/main.o -o $(BIN_DIR)/md  -L/usr/X11R6/lib -lGL -lGLU -lXxf86vm -g
+main.o:
+	cc -c $(SRC_DIR)/main.c -o $(LIB_DIR)/main.o -g
+graphic.o:
+	cc -c $(SRC_DIR)/graphic.c -o $(LIB_DIR)/graphic.o -g
+molecule.o:
+	cc -c $(SRC_DIR)/molecule.c -o $(LIB_DIR)/molecule.o -g
+
