@@ -72,26 +72,31 @@ int RenderMolecules(SYSTEM *system)
   	{
   		for(j=0;j<(system->allMolecules+i)->nBonds; j++)
   		{
-				double midx = (  ((system->allMolecules+i)->bonds+j)->atom1->x +
-							    			 ((system->allMolecules+i)->bonds+j)->atom2->x ) / 2.0;
-				double midy = (  ((system->allMolecules+i)->bonds+j)->atom1->y +
-							    			 ((system->allMolecules+i)->bonds+j)->atom2->y ) / 2.0;
-				double midz = (  ((system->allMolecules+i)->bonds+j)->atom1->z +
-							    			 ((system->allMolecules+i)->bonds+j)->atom2->z ) / 2.0;
-				glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][0],
-									AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][1],
-									AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][2]);
-				glVertex3f(	((system->allMolecules+i)->bonds+j)->atom1->x,
-										((system->allMolecules+i)->bonds+j)->atom1->y,
-										((system->allMolecules+i)->bonds+j)->atom1->z);
-				glVertex3f(	midx, midy, midz);
-				glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][0],
-									AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][1],
-									AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][2]);
-				glVertex3f(	((system->allMolecules+i)->bonds+j)->atom2->x,
-										((system->allMolecules+i)->bonds+j)->atom2->y,
-										((system->allMolecules+i)->bonds+j)->atom2->z);
-				glVertex3f(	midx, midy, midz);
+  			if(	abs(((system->allMolecules+i)->bonds+j)->atom1->x-((system->allMolecules+i)->bonds+j)->atom2->x)<system->dimension/2.0 &&
+  					abs(((system->allMolecules+i)->bonds+j)->atom1->y-((system->allMolecules+i)->bonds+j)->atom2->y)<system->dimension/2.0 &&
+  					abs(((system->allMolecules+i)->bonds+j)->atom1->z-((system->allMolecules+i)->bonds+j)->atom2->z)<system->dimension/2.0)
+  			{
+					double midx = (  ((system->allMolecules+i)->bonds+j)->atom1->x +
+									  			 ((system->allMolecules+i)->bonds+j)->atom2->x ) / 2.0;
+					double midy = (  ((system->allMolecules+i)->bonds+j)->atom1->y +
+									  			 ((system->allMolecules+i)->bonds+j)->atom2->y ) / 2.0;
+					double midz = (  ((system->allMolecules+i)->bonds+j)->atom1->z +
+									  			 ((system->allMolecules+i)->bonds+j)->atom2->z ) / 2.0;
+					glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][0],
+										AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][1],
+										AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][2]);
+					glVertex3f(	((system->allMolecules+i)->bonds+j)->atom1->x,
+											((system->allMolecules+i)->bonds+j)->atom1->y,
+											((system->allMolecules+i)->bonds+j)->atom1->z);
+					glVertex3f(	midx, midy, midz);
+					glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][0],
+										AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][1],
+										AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][2]);
+					glVertex3f(	((system->allMolecules+i)->bonds+j)->atom2->x,
+											((system->allMolecules+i)->bonds+j)->atom2->y,
+											((system->allMolecules+i)->bonds+j)->atom2->z);
+					glVertex3f(	midx, midy, midz);
+				}
 			}
   	}
   glEnd();

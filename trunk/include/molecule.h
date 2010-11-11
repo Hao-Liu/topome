@@ -26,6 +26,7 @@ typedef struct
 	int idxAtom1;
 	int idxAtom2;
 	int type;
+	int bondType;
 } BOND;
 typedef struct
 {
@@ -35,6 +36,7 @@ typedef struct
 	int idxAtom1;
 	int idxAtom2;
 	int idxAtom3;
+	int type;
 } ANGLE;
 typedef struct
 {
@@ -46,6 +48,7 @@ typedef struct
 	int idxAtom2;
 	int idxAtom3;
 	int idxAtom4;
+	int type;
 } DIHEDRAL;
 typedef struct
 {
@@ -57,6 +60,7 @@ typedef struct
 	int idxAtom2;
 	int idxAtom3;
 	int idxAtom4;
+	int type;
 } IMPROPER;
 
 typedef struct 
@@ -75,15 +79,23 @@ typedef struct
 
 typedef struct
 {
+	double K;
+	double r0;
 } BONDTYPE;
 typedef struct
 {
+	double K;
+	double theta0;
 } ANGLETYPE;
 typedef struct
 {
+	double K;
+	double phi0;
 } DIHEDRALTYPE;
 typedef struct
 {
+	double K;
+	double chi0;
 } IMPROPERTYPE;
 
 typedef struct
@@ -100,13 +112,13 @@ typedef struct
 	double r2min; //DEBUG FIXME
 
 	int nBondTypes;
-	BONDTYPE bondTypes;
+	BONDTYPE *bondTypes;
 	int nAngleTypes;
-	ANGLETYPE angleTypes;
+	ANGLETYPE *angleTypes;
 	int nDihedralTypes;
-	DIHEDRALTYPE dihedralTypes;
+	DIHEDRALTYPE *dihedralTypes;
 	int nImproperTypes;
-	IMPROPERTYPE improperTypes;
+	IMPROPERTYPE *improperTypes;
 	
 	int nMoleculeTypes;
 	MOLECULETYPE *moleculeTypes;
