@@ -17,8 +17,48 @@ int InitSystem(SYSTEM *system, char *infile)
 	char buffer[200];
 	char type[4];
 	int idummy;
-	system->r2min = 9e99; //DEBUG FIXME
+	system->r2min = 0.1; //DEBUG FIXME
 	system->dimension = 20.0;
+	
+	fgets(buffer, 200, fp);
+		sscanf(buffer, "%d %d %d %d", 
+								&(system->nBondTypes),
+								&(system->nAngleTypes),
+								&(system->nDihedralTypes),
+								&(system->nImproperTypes));
+	system->bondTypes = malloc(system->nBondTypes*sizeof(BONDTYPE));
+	system->angleTypes = malloc(system->nAngleTypes*sizeof(ANGLETYPE));
+	system->dihedralTypes = malloc(system->nDihedralTypes*sizeof(DIHEDRALTYPE));
+	system->improperTypes = malloc(system->nImproperTypes*sizeof(IMPROPERTYPE));
+	for(i=0; i<system->nBondTypes; i++)
+	{
+		fgets(buffer, 200, fp);
+		sscanf(buffer, "%lf %lf", 
+			&((system->bondTypes+i)->r0), 
+			&((system->bondTypes+i)->K));
+	}
+	for(i=0; i<system->nAngleTypes; i++)
+	{
+		fgets(buffer, 200, fp);
+		sscanf(buffer, "%lf %lf", 
+			&((system->angleTypes+i)->theta0), 
+			&((system->angleTypes+i)->K));
+	}
+	for(i=0; i<system->nDihedralTypes; i++)
+	{
+		fgets(buffer, 200, fp);
+		sscanf(buffer, "%lf %lf", 
+			&((system->dihedralTypes+i)->phi0), 
+			&((system->dihedralTypes+i)->K));
+	}
+	for(i=0; i<system->nImproperTypes; i++)
+	{
+		fgets(buffer, 200, fp);
+		sscanf(buffer, "%lf %lf", 
+			&((system->improperTypes+i)->chi0), 
+			&((system->improperTypes+i)->K));
+	}
+	
 	fgets(buffer, 200, fp);
 	sscanf(buffer, "%d", &(system->nMoleculeTypes));
 	system->moleculeTypes = malloc(system->nMoleculeTypes*sizeof(MOLECULETYPE));
@@ -98,11 +138,11 @@ int InitSystem(SYSTEM *system, char *infile)
 		for(j=0;j<(system->moleculeTypes+i)->molecule.nBonds;j++)
 		{
 			fgets(buffer, 200, fp);
-			sscanf(buffer, "%d %d %d %d", 
+			sscanf(buffer, "%d %d %d %d ", 
 								&(((system->moleculeTypes+i)->molecule.bonds+j)->idxAtom1),
 								&(((system->moleculeTypes+i)->molecule.bonds+j)->idxAtom2),
-								&(((system->moleculeTypes+i)->molecule.bonds+j)->type),
-								&idummy);
+								&(((system->moleculeTypes+i)->molecule.bonds+j)->bondType),
+								&(((system->moleculeTypes+i)->molecule.bonds+j)->type));
 			(((system->moleculeTypes+i)->molecule.bonds+j)->idxAtom1)--;
 			(((system->moleculeTypes+i)->molecule.bonds+j)->idxAtom2)--;
 		}
@@ -111,10 +151,11 @@ int InitSystem(SYSTEM *system, char *infile)
 		for(j=0;j<(system->moleculeTypes+i)->molecule.nAngles;j++)
 		{
 			fgets(buffer, 200, fp);
-			sscanf(buffer, "%d %d %d", 
+			sscanf(buffer, "%d %d %d %d", 
 								&(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom1),
 								&(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom2),
-								&(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom3));
+								&(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom3),
+								&(((system->moleculeTypes+i)->molecule.angles+j)->type));
 			(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom1)--;
 			(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom2)--;
 			(((system->moleculeTypes+i)->molecule.angles+j)->idxAtom3)--;
@@ -128,7 +169,8 @@ int InitSystem(SYSTEM *system, char *infile)
 								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom1),
 								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom2),
 								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom3),
-								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom4));
+								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom4),
+								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->type));
 			(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom1)--;
 			(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom2)--;
 			(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom3)--;
@@ -143,7 +185,8 @@ int InitSystem(SYSTEM *system, char *infile)
 								&(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom1),
 								&(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom2),
 								&(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom3),
-								&(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom4));
+								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->idxAtom4),
+								&(((system->moleculeTypes+i)->molecule.dihedrals+j)->type));
 			(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom1)--;
 			(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom2)--;
 			(((system->moleculeTypes+i)->molecule.impropers+j)->idxAtom3)--;
@@ -248,6 +291,8 @@ int CreateMolecules(SYSTEM *system)
 			(system->allMolecules+iAll)->bonds = malloc((system->allMolecules+iAll)->nBonds*sizeof(BOND));
 			for(k=0; k<(system->allMolecules+iAll)->nBonds; k++)
 			{
+				((system->allMolecules+iAll)->bonds+k)->type = 
+						((system->moleculeTypes+i)->molecule.bonds+k)->type ;
 				((system->allMolecules+iAll)->bonds+k)->idxAtom1 = 
 						((system->moleculeTypes+i)->molecule.bonds+k)->idxAtom1 ;
 				((system->allMolecules+iAll)->bonds+k)->idxAtom2 = 
@@ -263,6 +308,8 @@ int CreateMolecules(SYSTEM *system)
 			(system->allMolecules+iAll)->angles = malloc((system->allMolecules+iAll)->nAngles*sizeof(ANGLE));
 			for(k=0; k<(system->allMolecules+iAll)->nAngles; k++)
 			{
+				((system->allMolecules+iAll)->angles+k)->type = 
+						((system->moleculeTypes+i)->molecule.angles+k)->type ;
 				((system->allMolecules+iAll)->angles+k)->idxAtom1 = 
 						((system->moleculeTypes+i)->molecule.angles+k)->idxAtom1 ;
 				((system->allMolecules+iAll)->angles+k)->idxAtom2 = 
@@ -283,6 +330,8 @@ int CreateMolecules(SYSTEM *system)
 			(system->allMolecules+iAll)->dihedrals = malloc((system->allMolecules+iAll)->nDihedrals*sizeof(DIHEDRAL));
 			for(k=0; k<(system->allMolecules+iAll)->nDihedrals; k++)
 			{
+				((system->allMolecules+iAll)->dihedrals+k)->type = 
+						((system->moleculeTypes+i)->molecule.dihedrals+k)->type ;
 				((system->allMolecules+iAll)->dihedrals+k)->idxAtom1 = 
 						((system->moleculeTypes+i)->molecule.dihedrals+k)->idxAtom1 ;
 				((system->allMolecules+iAll)->dihedrals+k)->idxAtom2 = 
@@ -308,6 +357,8 @@ int CreateMolecules(SYSTEM *system)
 			(system->allMolecules+iAll)->impropers = malloc((system->allMolecules+iAll)->nImpropers*sizeof(IMPROPER));
 			for(k=0; k<(system->allMolecules+iAll)->nImpropers; k++)
 			{
+				((system->allMolecules+iAll)->impropers+k)->type = 
+						((system->moleculeTypes+i)->molecule.impropers+k)->type ;
 				((system->allMolecules+iAll)->impropers+k)->idxAtom1 = 
 						((system->moleculeTypes+i)->molecule.impropers+k)->idxAtom1 ;
 				((system->allMolecules+iAll)->impropers+k)->idxAtom2 = 
@@ -339,25 +390,43 @@ int	CalculateBondForce(SYSTEM *system)
 {
 	int i=0;
 	int j=0;
-	double dx,dy,dz,r,dr,forceCoef;
-	double K = 80.0;
-	double r0 = 1.15;
-	system->potentialEnergy = 0.0;
+	double dx,dy,dz,r,dr,forceCoef, K, r0;
 	for(i=0; i<system->nAllMolecules; i++)
 	{
 		for(j=0; j<(system->allMolecules+i)->nBonds; j++)
 		{
+			K  =  (system->bondTypes+((system->allMolecules+i)->bonds+j)->type)->K;
+			r0 =  (system->bondTypes+((system->allMolecules+i)->bonds+j)->type)->r0;
 			dx =  ((system->allMolecules+i)->bonds+j)->atom1->x - 
 						((system->allMolecules+i)->bonds+j)->atom2->x;
 			dy =  ((system->allMolecules+i)->bonds+j)->atom1->y - 
 						((system->allMolecules+i)->bonds+j)->atom2->y;
 			dz =  ((system->allMolecules+i)->bonds+j)->atom1->z - 
 						((system->allMolecules+i)->bonds+j)->atom2->z;
+
+			//get minimun image
+			if (fabs(dx) > system->dimension/2.0) 
+			{
+				if (dx < 0.0) dx += system->dimension;
+				else dx -= system->dimension;
+			}
+			if (fabs(dy) > system->dimension/2.0) 
+			{
+				if (dy < 0.0) dy += system->dimension;
+				else dy -= system->dimension;
+			}
+			if (fabs(dz) > system->dimension/2.0) 
+			{
+				if (dz < 0.0) dz += system->dimension;
+				else dz -= system->dimension;
+			}
+
 			r = sqrt(dx*dx+dy*dy+dz*dz);
 			dr = r -r0;
 			forceCoef = 2.0 * K * dr / r *4.184e-4;
 			
 			system->potentialEnergy += K * dr *dr *4.184e-4;
+			
 			((system->allMolecules+i)->bonds+j)->atom1->ax -= forceCoef*dx/((system->allMolecules+i)->bonds+j)->atom1->mass;
 			((system->allMolecules+i)->bonds+j)->atom1->ay -= forceCoef*dy/((system->allMolecules+i)->bonds+j)->atom1->mass;
 			((system->allMolecules+i)->bonds+j)->atom1->az -= forceCoef*dz/((system->allMolecules+i)->bonds+j)->atom1->mass;
@@ -369,6 +438,110 @@ int	CalculateBondForce(SYSTEM *system)
 	return 1;
 }
 
+int CalculateAngleForce(SYSTEM *system)
+{
+	int i,j;
+	double K, theta0, dx1, dy1, dz1, rsq1, r1, dx2 ,dy2, dz2, rsq2, r2, cosTheta, sinTheta, dtheta, tk, a, a11, a12, a22, f1x, f1y, f1z, f3x, f3y, f3z;
+	for(i=0; i<system->nAllMolecules; i++)
+	{
+		for(j=0; j<(system->allMolecules+i)->nAngles; j++)
+		{
+			K  =  (system->angleTypes+((system->allMolecules+i)->angles+j)->type)->K;
+			theta0 =  (system->angleTypes+((system->allMolecules+i)->angles+j)->type)->theta0/180.0*3.14159265357989;
+			dx1 =  ((system->allMolecules+i)->angles+j)->atom1->x - 
+						((system->allMolecules+i)->angles+j)->atom2->x;
+			dy1 =  ((system->allMolecules+i)->angles+j)->atom1->y - 
+						((system->allMolecules+i)->angles+j)->atom2->y;
+			dz1 =  ((system->allMolecules+i)->angles+j)->atom1->z - 
+						((system->allMolecules+i)->angles+j)->atom2->z;
+
+			//get minimun image
+			if (fabs(dx1) > system->dimension/2.0) 
+			{
+				if (dx1 < 0.0) dx1 += system->dimension;
+				else dx1 -= system->dimension;
+			}
+			if (fabs(dy1) > system->dimension/2.0) 
+			{
+				if (dy1 < 0.0) dy1 += system->dimension;
+				else dy1 -= system->dimension;
+			}
+			if (fabs(dz1) > system->dimension/2.0) 
+			{
+				if (dz1 < 0.0) dz1 += system->dimension;
+				else dz1 -= system->dimension;
+			}
+
+			rsq1 = dx1*dx1+dy1*dy1+dz1*dz1;
+			r1 = sqrt(rsq1);
+
+
+			dx2 =  ((system->allMolecules+i)->angles+j)->atom3->x - 
+						((system->allMolecules+i)->angles+j)->atom2->x;
+			dy2 =  ((system->allMolecules+i)->angles+j)->atom3->y - 
+						((system->allMolecules+i)->angles+j)->atom2->y;
+			dz2 =  ((system->allMolecules+i)->angles+j)->atom3->z - 
+						((system->allMolecules+i)->angles+j)->atom2->z;
+
+			//get minimun image
+			if (fabs(dx2) > system->dimension/2.0) 
+			{
+				if (dx2 < 0.0) dx2 += system->dimension;
+				else dx2 -= system->dimension;
+			}
+			if (fabs(dy2) > system->dimension/2.0) 
+			{
+				if (dy2 < 0.0) dy2 += system->dimension;
+				else dy2 -= system->dimension;
+			}
+			if (fabs(dz2) > system->dimension/2.0) 
+			{
+				if (dz2 < 0.0) dz2 += system->dimension;
+				else dz2 -= system->dimension;
+			}
+
+			rsq2 = dx2*dx2+dy2*dy2+dz2*dz2;
+			r2 = sqrt(rsq2);
+
+
+			cosTheta = dx1*dx2 + dy1*dy2 + dz1*dz2;
+			cosTheta /= r1*r2;
+			if (cosTheta > 1.0) cosTheta= 1.0;
+			if (cosTheta <-1.0) cosTheta=-1.0;
+			
+			sinTheta = sqrt(1.0 -cosTheta*cosTheta);
+			if(sinTheta < 0.001) sinTheta=0.001;
+			dtheta = acos(cosTheta) - theta0;
+			
+			tk = K*dtheta;
+			
+			a   = -2.0*tk/sinTheta*4.184e-4;
+			a11 = a*cosTheta / rsq1;
+			a12 = -a /(r1*r2);
+			a22 = a*cosTheta / rsq2;
+			
+			f1x = a11*dx1 + a12*dx2;
+			f1y = a11*dy1 + a12*dy2;
+			f1z = a11*dz1 + a12*dz2;
+			f3x = a22*dx2 + a12*dx1;
+			f3y = a22*dy2 + a12*dy1;
+			f3z = a22*dz2 + a12*dz1;
+			
+			system->potentialEnergy += K * dtheta *dtheta *4.184e-4;
+			((system->allMolecules+i)->angles+j)->atom1->ax += f1x/((system->allMolecules+i)->angles+j)->atom1->mass;
+			((system->allMolecules+i)->angles+j)->atom1->ay += f1y/((system->allMolecules+i)->angles+j)->atom1->mass;
+			((system->allMolecules+i)->angles+j)->atom1->az += f1z/((system->allMolecules+i)->angles+j)->atom1->mass;
+			((system->allMolecules+i)->angles+j)->atom3->ax += f3x/((system->allMolecules+i)->angles+j)->atom3->mass;
+			((system->allMolecules+i)->angles+j)->atom3->ay += f3y/((system->allMolecules+i)->angles+j)->atom3->mass;
+			((system->allMolecules+i)->angles+j)->atom3->az += f3z/((system->allMolecules+i)->angles+j)->atom3->mass;
+			((system->allMolecules+i)->angles+j)->atom2->ax -= (f1x+f3x)/((system->allMolecules+i)->angles+j)->atom2->mass;
+			((system->allMolecules+i)->angles+j)->atom2->ay -= (f1y+f3y)/((system->allMolecules+i)->angles+j)->atom2->mass;
+			((system->allMolecules+i)->angles+j)->atom2->az -= (f1z+f3z)/((system->allMolecules+i)->angles+j)->atom2->mass;
+		}
+	}
+	
+	return 1;
+}
 int	CalculatePairForce(SYSTEM *system)
 {
 	int i=0;
@@ -393,6 +566,24 @@ int	CalculatePairForce(SYSTEM *system)
 								((system->allMolecules+i)->atoms+j)->y;
 					dz = 	((system->allMolecules+k)->atoms+l)->z - 
 								((system->allMolecules+i)->atoms+j)->z;
+
+					//get minimun image
+					if (fabs(dx) > system->dimension/2.0) 
+					{
+						if (dx < 0.0) dx += system->dimension;
+						else dx -= system->dimension;
+					}
+					if (fabs(dy) > system->dimension/2.0) 
+					{
+						if (dy < 0.0) dy += system->dimension;
+						else dy -= system->dimension;
+					}
+					if (fabs(dz) > system->dimension/2.0) 
+					{
+						if (dz < 0.0) dz += system->dimension;
+						else dz -= system->dimension;
+					}
+
 					r2 = dx*dx + dy*dy + dz*dz + soft;
 					if (r2 < 1.0) r2 = 1.0;  //FIXME
 					if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
@@ -425,8 +616,11 @@ int	CalculateForce(SYSTEM *system)
 			((system->allMolecules+i)->atoms+j)->az = 0.0;
 		}
 	}
+	system->potentialEnergy = 0.0;
 	CalculateBondForce(system);
+	CalculateAngleForce(system);
 	CalculatePairForce(system);
+//	getchar();
 	return 1;
 }
 
@@ -451,6 +645,13 @@ int	Integrate(SYSTEM *system)
 			newz = 2.0 *	((system->allMolecules+i)->atoms+j)->z - 
 										((system->allMolecules+i)->atoms+j)->oldz +
 										((system->allMolecules+i)->atoms+j)->az * dt * dt;
+			if(newx<0) newx+=system->dimension;
+			if(newy<0) newy+=system->dimension;
+			if(newz<0) newz+=system->dimension;
+			if(newx>system->dimension) newx-=system->dimension;
+			if(newy>system->dimension) newy-=system->dimension;
+			if(newz>system->dimension) newz-=system->dimension;
+			
 /*										
 			//Calculate maximum accelaretion
 			max = (((system->allMolecules+i)->atoms+j)->ax > max)?((system->allMolecules+i)->atoms+j)->ax:max;
