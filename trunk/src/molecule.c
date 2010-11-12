@@ -17,8 +17,10 @@ int InitSystem(SYSTEM *system, char *infile)
 	char buffer[200];
 	char type[4];
 	int idummy;
-	system->r2min = 0.1; //DEBUG FIXME
-	system->dimension = 20.0;
+	system->rCut = 2.8;
+	system->r2min = 100.0; //DEBUG FIXME
+	system->vMax = 0.0; //DEBUG FIXME
+	system->dimension = 10.0;
 	
 	fgets(buffer, 200, fp);
 		sscanf(buffer, "%d %d %d %d", 
@@ -92,12 +94,13 @@ int InitSystem(SYSTEM *system, char *infile)
 		for(j=0;j<(system->moleculeTypes+i)->molecule.nAtoms;j++)
 		{
 			fgets(buffer, 200, fp);
-			sscanf(buffer, "%lf %lf %lf %s %lf", 
+			sscanf(buffer, "%lf %lf %lf %s %lf %lf", 
 								&(((system->moleculeTypes+i)->molecule.atoms+j)->x),
 								&(((system->moleculeTypes+i)->molecule.atoms+j)->y),
 								&(((system->moleculeTypes+i)->molecule.atoms+j)->z),
 								type,
-								&(((system->moleculeTypes+i)->molecule.atoms+j)->mass));
+								&(((system->moleculeTypes+i)->molecule.atoms+j)->mass),
+								&(((system->moleculeTypes+i)->molecule.atoms+j)->charge));
 			for(k=0; k<ATOM_TYPE_MAX; k++)
 			{
 				if(!strcmp(type, AtomType[k]))
@@ -112,7 +115,6 @@ int InitSystem(SYSTEM *system, char *infile)
 			((system->moleculeTypes+i)->molecule.atoms+j)->ax = 0.0;
 			((system->moleculeTypes+i)->molecule.atoms+j)->ay = 0.0;
 			((system->moleculeTypes+i)->molecule.atoms+j)->az = 0.0;
-			((system->moleculeTypes+i)->molecule.atoms+j)->charge = 0.0;
 			
 			accCOGx+=(((system->moleculeTypes+i)->molecule.atoms+j)->x)*
 								(((system->moleculeTypes+i)->molecule.atoms+j)->mass);
@@ -272,7 +274,7 @@ int CreateMolecules(SYSTEM *system)
 				((system->allMolecules+iAll)->atoms+k)->vz = 
 						(double)rand()/(double)RAND_MAX ; 
 						
-						
+				((system->allMolecules+iAll)->atoms+k)->mol = iAll;
 				((system->allMolecules+iAll)->atoms+k)->ax = 
 						((system->moleculeTypes+i)->molecule.atoms+k)->ax ; 
 				((system->allMolecules+iAll)->atoms+k)->ay = 
@@ -542,7 +544,93 @@ int CalculateAngleForce(SYSTEM *system)
 	
 	return 1;
 }
-int	CalculatePairForce(SYSTEM *system)
+
+//Pair force implemented grid sckeme
+int CalculatePairForce(SYSTEM *system)
+{
+	int i,j,k,l,m,n,o,p,im,in,io;
+	double dx,dy,dz,r2,r4,r8,r14,LJCoef,coulCoef,forceCoef;
+	double Cepsilon = 0.01;
+	double epsilon = 0.0001;
+	double soft = 0.001;
+	ATOM *atom1;
+	ATOM *atom2;
+	for(i=0; i<system->nSlice; i++)
+	{
+		for(j=0; j<system->nSlice; j++)
+		{
+			for(k=0; k<system->nSlice; k++)
+			{
+				for(l=0; l<system->gridCount[i*system->nSlice*system->nSlice+j*system->nSlice+k]; l++)
+				{
+					atom1 = system->grid[i*system->nSlice*system->nSlice+j*system->nSlice+k][l];
+					for(im=i-1; im<i+2; im++)
+					{
+						for(in=i-1; in<i+2; in++)
+						{
+							for(io=i-1; io<i+2; io++)
+							{
+								m=im;
+								n=in;
+								o=io;
+								if(m<0) m+=system->nSlice;
+								if(n<0) n+=system->nSlice;
+								if(o<0) o+=system->nSlice;
+								if(m>=system->nSlice) m-=system->nSlice;
+								if(n>=system->nSlice) n-=system->nSlice;
+								if(o>=system->nSlice) o-=system->nSlice;
+								for(p=0; p<system->gridCount[m*system->nSlice*system->nSlice+n*system->nSlice+o]; p++)
+								{
+									atom2 = system->grid[m*system->nSlice*system->nSlice+n*system->nSlice+o][p];
+									if(atom1->mol == atom2->mol) continue;
+									dx = atom2->x - atom1->x;
+									dy = atom2->y - atom1->y;
+									dz = atom2->z - atom1->z;
+									
+									//get minimun image
+									if (fabs(dx) > system->dimension/2.0) 
+									{
+										if (dx < 0.0) dx += system->dimension;
+										else dx -= system->dimension;
+									}
+									if (fabs(dy) > system->dimension/2.0) 
+									{
+										if (dy < 0.0) dy += system->dimension;
+										else dy -= system->dimension;
+									}
+									if (fabs(dz) > system->dimension/2.0) 
+									{
+										if (dz < 0.0) dz += system->dimension;
+										else dz -= system->dimension;
+									}
+
+									r2 = dx*dx + dy*dy + dz*dz + soft;
+									coulCoef = Cepsilon*atom2->charge*atom1->charge/sqrt(r2);
+									if (r2 > system->rCut) continue;
+									if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
+									r4 = r2*r2;
+									r8 = r4*r4;
+									r14 = r8*r4*r2;
+									LJCoef = 4.0 * epsilon * (6.0/r8 - 12.0/r14);
+									forceCoef = (LJCoef-coulCoef) / atom1->mass;
+									if (forceCoef < -0.01) forceCoef=-0.01;
+									atom1->ax += forceCoef * dx;
+									atom1->ay += forceCoef * dy;
+									atom1->az += forceCoef * dz;
+									
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return 1;
+}
+
+//Global pair force 
+int	CalculatePairForceOld(SYSTEM *system)
 {
 	int i=0;
 	int j=0;
@@ -587,10 +675,10 @@ int	CalculatePairForce(SYSTEM *system)
 					r2 = dx*dx + dy*dy + dz*dz + soft;
 					if (r2 < 1.0) r2 = 1.0;  //FIXME
 					if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
-					r4 = r2*r2;
+					r4 = r2*r2*r2;
 					r8 = r4*r4;
 					r14 = r8*r4*r2;
-					forceCoef = 4.0 * epsilon * (6.0/r8 - 12.0/r14) / ((system->allMolecules+i)->atoms+j)->mass;
+					forceCoef = 4.0 * epsilon * (1.0/r4 - 1.0/r8) / ((system->allMolecules+i)->atoms+j)->mass;
 					((system->allMolecules+i)->atoms+j)->ax += forceCoef * dx;
 					((system->allMolecules+i)->atoms+j)->ay += forceCoef * dy;
 					((system->allMolecules+i)->atoms+j)->az += forceCoef * dz;
@@ -602,6 +690,91 @@ int	CalculatePairForce(SYSTEM *system)
 	return 1;
 }
 
+int CreateGridList(SYSTEM *system)
+{
+	int i,j,k,ix,iy,iz,idx;
+	
+	//get grid counts
+	system->nSlice = floor(system->dimension / system->rCut);
+	system->grid = malloc(system->nSlice*system->nSlice*system->nSlice*sizeof(ATOM**));
+	system->gridCount = malloc(system->nSlice*system->nSlice*system->nSlice*sizeof(int));
+	memset(system->gridCount, 0, system->nSlice*system->nSlice*system->nSlice*sizeof(int));
+	for(i=0; i<system->nAllMolecules; i++)
+	{
+		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
+		{
+			ix = floor(((system->allMolecules+i)->atoms+j)->x /
+				(system->dimension/(double)(system->nSlice)));
+			iy = floor(((system->allMolecules+i)->atoms+j)->y /
+				(system->dimension/(double)(system->nSlice)));
+			iz = floor(((system->allMolecules+i)->atoms+j)->z /
+				(system->dimension/(double)(system->nSlice)));
+			if(ix<0) ix=0;
+			if(iy<0) iy=0;
+			if(iz<0) iz=0;
+			if(ix>=system->nSlice) ix=system->nSlice-1;
+			if(iy>=system->nSlice) iy=system->nSlice-1;
+			if(iz>=system->nSlice) iz=system->nSlice-1;
+			
+			system->gridCount[iz*system->nSlice*system->nSlice+iy*system->nSlice+ix]++;
+		}
+	}
+	
+	//allocate grid space
+	for(i=0; i<system->nSlice; i++)
+	{
+		for(j=0; j<system->nSlice; j++)
+		{
+			for(k=0; k<system->nSlice; k++)
+			{
+				idx = i*system->nSlice*system->nSlice+j*system->nSlice+k;
+				system->grid[idx] = 
+					malloc(system->gridCount[idx]*sizeof(ATOM**));
+			}
+		}
+	}
+
+	//set grid
+	memset(system->gridCount, 0, system->nSlice*system->nSlice*system->nSlice*sizeof(int));
+	
+	for(i=0; i<system->nAllMolecules; i++)
+	{
+		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
+		{
+			ix = floor(((system->allMolecules+i)->atoms+j)->x /
+				(system->dimension/(double)(system->nSlice)));
+			iy = floor(((system->allMolecules+i)->atoms+j)->y /
+				(system->dimension/(double)(system->nSlice)));
+			iz = floor(((system->allMolecules+i)->atoms+j)->z /
+				(system->dimension/(double)(system->nSlice)));
+			if(ix<0) ix=0;
+			if(iy<0) iy=0;
+			if(iz<0) iz=0;
+			if(ix>=system->nSlice) ix=system->nSlice-1;
+			if(iy>=system->nSlice) iy=system->nSlice-1;
+			if(iz>=system->nSlice) iz=system->nSlice-1;
+			idx = iz*system->nSlice*system->nSlice+iy*system->nSlice+ix;
+//			printf("%d %d %d %d %d %lf\n",ix,iy,iz,idx, system->gridCount[idx], ((system->allMolecules+i)->atoms+j)->z);
+			system->grid[idx][system->gridCount[idx]]=(system->allMolecules+i)->atoms+j;
+			system->gridCount[idx]++;
+		}
+	}
+/*	
+	for(i=0; i<system->nSlice; i++)
+	{
+		for(j=0; j<system->nSlice; j++)
+		{
+			for(k=0; k<system->nSlice; k++)
+			{
+				printf("%d ",system->gridCount[i*system->nSlice*system->nSlice+j*system->nSlice+k]);
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
+*/	
+	return 1;
+}
 int	CalculateForce(SYSTEM *system)
 {
 	int i=0;
@@ -617,6 +790,7 @@ int	CalculateForce(SYSTEM *system)
 		}
 	}
 	system->potentialEnergy = 0.0;
+	CreateGridList(system);
 	CalculateBondForce(system);
 	CalculateAngleForce(system);
 	CalculatePairForce(system);
@@ -629,50 +803,46 @@ int	Integrate(SYSTEM *system)
 	int i=0;
 	int j=0;
 	double newx,newy,newz;
-	double dt=2.0;
-	
+	double dt=1.0;
+	ATOM *atom;
 //	double max = 0.0;
 	for(i=0; i<system->nAllMolecules; i++)
 	{
 		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
 		{
-			newx = 2.0 *	((system->allMolecules+i)->atoms+j)->x - 
-										((system->allMolecules+i)->atoms+j)->oldx +
-										((system->allMolecules+i)->atoms+j)->ax * dt * dt;
-			newy = 2.0 *	((system->allMolecules+i)->atoms+j)->y - 
-										((system->allMolecules+i)->atoms+j)->oldy +
-										((system->allMolecules+i)->atoms+j)->ay * dt * dt;
-			newz = 2.0 *	((system->allMolecules+i)->atoms+j)->z - 
-										((system->allMolecules+i)->atoms+j)->oldz +
-										((system->allMolecules+i)->atoms+j)->az * dt * dt;
+			atom = (system->allMolecules+i)->atoms+j;
+			newx = 2.0 *	atom->x - atom->oldx + atom->ax * dt * dt;
+			newy = 2.0 *	atom->y - atom->oldy + atom->ay * dt * dt;
+			newz = 2.0 *	atom->z - atom->oldz + atom->az * dt * dt;
+			
+			atom->oldx = atom->x;
+			atom->oldy = atom->y;
+			atom->oldz = atom->z;
+			atom->vx = (newx - atom->oldx)/dt;
+			atom->vy = (newy - atom->oldy)/dt;
+			atom->vz = (newz - atom->oldz)/dt;
+			
+//			if(fabs(atom->ax) > 0.005) atom->ax=0.0;
+//			if(fabs(atom->ay) > 0.005) atom->ay=0.0;
+//			if(fabs(atom->az) > 0.005) atom->az=0.0;
+										
+			//Calculate maximum accelaretion
+			if(fabs(atom->ax) > system->vMax)  system->vMax=fabs(atom->ax) ;
+			if(fabs(atom->ay) > system->vMax)  system->vMax=fabs(atom->ay) ;
+			if(fabs(atom->az) > system->vMax)  system->vMax=fabs(atom->az) ;
+	
+			
 			if(newx<0) newx+=system->dimension;
 			if(newy<0) newy+=system->dimension;
 			if(newz<0) newz+=system->dimension;
-			if(newx>system->dimension) newx-=system->dimension;
-			if(newy>system->dimension) newy-=system->dimension;
-			if(newz>system->dimension) newz-=system->dimension;
-			
-/*										
-			//Calculate maximum accelaretion
-			max = (((system->allMolecules+i)->atoms+j)->ax > max)?((system->allMolecules+i)->atoms+j)->ax:max;
-			max = (((system->allMolecules+i)->atoms+j)->ay > max)?((system->allMolecules+i)->atoms+j)->ay:max;
-			max = (((system->allMolecules+i)->atoms+j)->az > max)?((system->allMolecules+i)->atoms+j)->az:max;
-*/			
-			((system->allMolecules+i)->atoms+j)->oldx = ((system->allMolecules+i)->atoms+j)->x;
-			((system->allMolecules+i)->atoms+j)->oldy = ((system->allMolecules+i)->atoms+j)->y;
-			((system->allMolecules+i)->atoms+j)->oldz = ((system->allMolecules+i)->atoms+j)->z;
-			((system->allMolecules+i)->atoms+j)->x = newx;
-			((system->allMolecules+i)->atoms+j)->y = newy;
-			((system->allMolecules+i)->atoms+j)->z = newz;
-			((system->allMolecules+i)->atoms+j)->vx =
-				(newx - ((system->allMolecules+i)->atoms+j)->oldx)/dt;
-			((system->allMolecules+i)->atoms+j)->vy =
-				(newy - ((system->allMolecules+i)->atoms+j)->oldy)/dt;
-			((system->allMolecules+i)->atoms+j)->vz =
-				(newz - ((system->allMolecules+i)->atoms+j)->oldz)/dt;
+			if(newx>=system->dimension) newx-=system->dimension;
+			if(newy>=system->dimension) newy-=system->dimension;
+			if(newz>=system->dimension) newz-=system->dimension;
+			atom->x = newx;
+			atom->y = newy;
+			atom->z = newz;
 		}
 	}
-//	printf("%lf\n",max);
 	return 1;
 }
 
@@ -702,9 +872,9 @@ int	CalculateKineticEnergy(SYSTEM *system)
 
 int	UpdateMolecules(SYSTEM *system)
 {
+	Integrate(system);
 	CalculateForce(system);
 	CalculateKineticEnergy(system);
-	Integrate(system);
 	return 1;
 }
 

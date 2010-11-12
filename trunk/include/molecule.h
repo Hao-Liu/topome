@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <memory.h>
 typedef struct
 {
 	double oldx;
@@ -16,6 +17,7 @@ typedef struct
 	double ay;
 	double az;
 	double mass;
+	int    mol;
 	int    type;
 	double charge;
 } ATOM;
@@ -107,9 +109,14 @@ typedef struct
 typedef struct
 {
 	double dimension;
+	int nSlice;
+	double rCut;
+	ATOM ***grid;
+	int *gridCount;
 	double potentialEnergy;
 	double kineticEnergy;
 	double r2min; //DEBUG FIXME
+	double vMax; //DEBUG FIXME
 
 	int nBondTypes;
 	BONDTYPE *bondTypes;
