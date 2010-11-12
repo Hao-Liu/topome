@@ -5,6 +5,8 @@ int RenderMolecules(SYSTEM *system)
 {
 	int i=0;
 	int j=0;
+	ATOM *atom1;
+	ATOM *atom2;
 	float AtomColor[][3]=
 	{
 	{1.0f, 1.0f, 1.0f}, //X
@@ -31,53 +33,78 @@ int RenderMolecules(SYSTEM *system)
 	};
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
-  glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension*2.5);
-  glBegin(GL_POINTS);
+  glTranslatef(0.0f, 0.0f, -system->dimension*2.0);
+  glRotatef((double)(system->step)/360.0, 1.0f, 1.0f, 0.0f);
+  glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension/2.0);
+	//Draw cell
+	glBegin(GL_LINES);
+		glColor3f(1.0f, 1.0f, 1.0f);
+		glVertex3f(0.0f,0.0f,0.0f);
+		glVertex3f(0.0f,0.0f,system->dimension);
+		glVertex3f(0.0f,system->dimension,0.0f);
+		glVertex3f(0.0f,system->dimension,system->dimension);
+		glVertex3f(system->dimension,0.0f,0.0f);
+		glVertex3f(system->dimension,0.0f,system->dimension);
+		glVertex3f(system->dimension,system->dimension,0.0f);
+		glVertex3f(system->dimension,system->dimension,system->dimension);
+		glVertex3f(0.0f,0.0f,0.0f);
+		glVertex3f(0.0f,system->dimension,0.0f);
+		glVertex3f(0.0f,0.0f,system->dimension);
+		glVertex3f(0.0f,system->dimension,system->dimension);
+		glVertex3f(system->dimension,0.0f,0.0f);
+		glVertex3f(system->dimension,system->dimension,0.0f);
+		glVertex3f(system->dimension,0.0f,system->dimension);
+		glVertex3f(system->dimension,system->dimension,system->dimension);
+		glVertex3f(0.0f,0.0f,0.0f);
+		glVertex3f(system->dimension,0.0f,0.0f);
+		glVertex3f(0.0f,system->dimension,0.0f);
+		glVertex3f(system->dimension,system->dimension,0.0f);
+		glVertex3f(0.0f,0.0f,system->dimension);
+		glVertex3f(system->dimension,0.0f,system->dimension);
+		glVertex3f(0.0f,system->dimension,system->dimension);
+		glVertex3f(system->dimension,system->dimension,system->dimension);
+	glEnd();
+
+	//Draw Atoms
+	glBegin(GL_POINTS);
   	for(i=0;i<system->nAllMolecules;i++)
   	{
   		for(j=0;j<(system->allMolecules+i)->nAtoms; j++)
   		{
-				glColor3f(AtomColor[((system->allMolecules+i)->atoms+j)->type][0],
-									AtomColor[((system->allMolecules+i)->atoms+j)->type][1],
-									AtomColor[((system->allMolecules+i)->atoms+j)->type][2]);
-				glVertex3f(	((system->allMolecules+i)->atoms+j)->x,
-										((system->allMolecules+i)->atoms+j)->y,
-										((system->allMolecules+i)->atoms+j)->z);
-			}
+			atom1 = ((system->allMolecules+i)->atoms+j);	
+			glColor3f(AtomColor[atom1->type][0],AtomColor[atom1->type][1],AtomColor[atom1->type][2]);
+			glVertex3f(atom1->x,atom1->y,atom1->z);
+		}
   	}
   glEnd();
 
+	//Draw Bonds
   glBegin(GL_LINES);
   	for(i=0;i<system->nAllMolecules;i++)
   	{
   		for(j=0;j<(system->allMolecules+i)->nBonds; j++)
   		{
-  			if(	abs(((system->allMolecules+i)->bonds+j)->atom1->x-((system->allMolecules+i)->bonds+j)->atom2->x)<system->dimension/2.0 &&
-  					abs(((system->allMolecules+i)->bonds+j)->atom1->y-((system->allMolecules+i)->bonds+j)->atom2->y)<system->dimension/2.0 &&
-  					abs(((system->allMolecules+i)->bonds+j)->atom1->z-((system->allMolecules+i)->bonds+j)->atom2->z)<system->dimension/2.0)
+  			atom1 = ((system->allMolecules+i)->bonds+j)->atom1;
+			atom2 = ((system->allMolecules+i)->bonds+j)->atom2;
+			if(	abs(atom1->x-atom2->x)<system->dimension/2.0 &&
+  				abs(atom1->y-atom2->y)<system->dimension/2.0 &&
+  				abs(atom1->z-atom2->z)<system->dimension/2.0)
   			{
-					double midx = (  ((system->allMolecules+i)->bonds+j)->atom1->x +
-									  			 ((system->allMolecules+i)->bonds+j)->atom2->x ) / 2.0;
-					double midy = (  ((system->allMolecules+i)->bonds+j)->atom1->y +
-									  			 ((system->allMolecules+i)->bonds+j)->atom2->y ) / 2.0;
-					double midz = (  ((system->allMolecules+i)->bonds+j)->atom1->z +
-									  			 ((system->allMolecules+i)->bonds+j)->atom2->z ) / 2.0;
-					glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][0],
-										AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][1],
-										AtomColor[((system->allMolecules+i)->bonds+j)->atom1->type][2]);
-					glVertex3f(	((system->allMolecules+i)->bonds+j)->atom1->x,
-											((system->allMolecules+i)->bonds+j)->atom1->y,
-											((system->allMolecules+i)->bonds+j)->atom1->z);
+					double midx = (  atom1->x + atom2->x ) / 2.0;
+					double midy = (  atom1->y + atom2->y ) / 2.0;
+					double midz = (  atom1->z + atom2->z ) / 2.0;
+					glColor3f(AtomColor[atom1->type][0],AtomColor[atom1->type][1],AtomColor[atom1->type][2]);
+					glVertex3f(	atom1->x,atom1->y,atom1->z);
 					glVertex3f(	midx, midy, midz);
-					glColor3f(AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][0],
-										AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][1],
-										AtomColor[((system->allMolecules+i)->bonds+j)->atom2->type][2]);
-					glVertex3f(	((system->allMolecules+i)->bonds+j)->atom2->x,
-											((system->allMolecules+i)->bonds+j)->atom2->y,
-											((system->allMolecules+i)->bonds+j)->atom2->z);
+					glColor3f(AtomColor[atom2->type][0],AtomColor[atom2->type][1],AtomColor[atom2->type][2]);
+					glVertex3f(	atom2->x,atom2->y,atom2->z);
 					glVertex3f(	midx, midy, midz);
-				}
 			}
+			else
+			{
+			//FIXME	
+			}
+		}
   	}
   glEnd();
   if (GLWin.doubleBuffered)

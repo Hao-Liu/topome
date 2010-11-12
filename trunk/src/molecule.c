@@ -17,10 +17,17 @@ int InitSystem(SYSTEM *system, char *infile)
 	char buffer[200];
 	char type[4];
 	int idummy;
-	system->rCut = 2.8;
 	system->r2min = 100.0; //DEBUG FIXME
 	system->vMax = 0.0; //DEBUG FIXME
-	system->dimension = 10.0;
+
+
+	fgets(buffer, 200, fp);
+	sscanf(buffer, "%lf %lf %d", &(system->dimension), &(system->rCut), &(system->is2D));
+
+	system->nSlice = floor(system->dimension / system->rCut);
+	system->nGrids = system->nSlice*system->nSlice*system->nSlice;
+	system->grid = malloc(system->nGrids*sizeof(ATOM**));
+	system->gridCount = malloc(system->nGrids*sizeof(int));
 	
 	fgets(buffer, 200, fp);
 		sscanf(buffer, "%d %d %d %d", 
@@ -203,6 +210,8 @@ int CreateMolecules(SYSTEM *system)
 	int i=0;
 	int j=0;
 	int k=0;
+	int countPerDim;
+	double molecularPosx,molecularPosy,molecularPosz;
 	
 	system->nAllMolecules = 0;
 	for(i=0; i<system->nMoleculeTypes; i++)
@@ -238,11 +247,21 @@ int CreateMolecules(SYSTEM *system)
 			double molecularPosz=(double)rand()/(double)RAND_MAX*system->dimension;
 */			
 			//Initiate molecules at grid position
-			int countPerDim = ceil(pow((system->moleculeTypes+i)->nMolecules, 1.0/3.0));
-			double molecularPosx= (double)(j%(countPerDim*countPerDim)%countPerDim)/(double)countPerDim*system->dimension;
-			double molecularPosy= (double)(j%(countPerDim*countPerDim)/countPerDim)/(double)countPerDim*system->dimension;
-			double molecularPosz= (double)(j/(countPerDim*countPerDim))/(double)countPerDim*system->dimension;
-			
+			if(system->is2D)
+			{
+				countPerDim = ceil(sqrt((system->moleculeTypes+i)->nMolecules));
+				molecularPosx = (double)(j%countPerDim)/(double)countPerDim*system->dimension;
+				molecularPosy = (double)(j/countPerDim)/(double)countPerDim*system->dimension;
+				molecularPosz = 0.0;
+			}
+			else
+			{
+				countPerDim = ceil(pow((system->moleculeTypes+i)->nMolecules, 1.0/3.0));
+				molecularPosx= (double)(j%(countPerDim*countPerDim)%countPerDim)/(double)countPerDim*system->dimension;
+				molecularPosy= (double)(j%(countPerDim*countPerDim)/countPerDim)/(double)countPerDim*system->dimension;
+				molecularPosz= (double)(j/(countPerDim*countPerDim))/(double)countPerDim*system->dimension;
+			}
+
 			for(k=0; k<(system->allMolecules+iAll)->nAtoms; k++)
 			{
 				((system->allMolecules+iAll)->atoms+k)->x = 
@@ -689,16 +708,21 @@ int	CalculatePairForceOld(SYSTEM *system)
 	}
 	return 1;
 }
-
+int ReleaseGridList(SYSTEM *system)
+{
+	int i;
+	for(i=0; i<system->nGrids; i++)
+	{
+		free(system->grid[i]);
+	}
+	return 1;
+}
 int CreateGridList(SYSTEM *system)
 {
 	int i,j,k,ix,iy,iz,idx;
 	
 	//get grid counts
-	system->nSlice = floor(system->dimension / system->rCut);
-	system->grid = malloc(system->nSlice*system->nSlice*system->nSlice*sizeof(ATOM**));
-	system->gridCount = malloc(system->nSlice*system->nSlice*system->nSlice*sizeof(int));
-	memset(system->gridCount, 0, system->nSlice*system->nSlice*system->nSlice*sizeof(int));
+	memset(system->gridCount, 0, system->nGrids*sizeof(int));
 	for(i=0; i<system->nAllMolecules; i++)
 	{
 		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
@@ -735,7 +759,7 @@ int CreateGridList(SYSTEM *system)
 	}
 
 	//set grid
-	memset(system->gridCount, 0, system->nSlice*system->nSlice*system->nSlice*sizeof(int));
+	memset(system->gridCount, 0, system->nGrids*sizeof(int));
 	
 	for(i=0; i<system->nAllMolecules; i++)
 	{
@@ -794,6 +818,7 @@ int	CalculateForce(SYSTEM *system)
 	CalculateBondForce(system);
 	CalculateAngleForce(system);
 	CalculatePairForce(system);
+	ReleaseGridList(system);
 //	getchar();
 	return 1;
 }
@@ -802,7 +827,7 @@ int	Integrate(SYSTEM *system)
 {
 	int i=0;
 	int j=0;
-	double newx,newy,newz;
+	double newx,newy,newz,dx,dy,dz;
 	double dt=1.0;
 	ATOM *atom;
 //	double max = 0.0;
@@ -818,10 +843,29 @@ int	Integrate(SYSTEM *system)
 			atom->oldx = atom->x;
 			atom->oldy = atom->y;
 			atom->oldz = atom->z;
-			atom->vx = (newx - atom->oldx)/dt;
-			atom->vy = (newy - atom->oldy)/dt;
-			atom->vz = (newz - atom->oldz)/dt;
-			
+			dx = newx - atom->oldx;
+			dy = newy - atom->oldy;
+			dz = newz - atom->oldz;
+			//get minimun image
+			if (fabs(dx) > system->dimension/2.0) 
+			{
+				if (dx < 0.0) dx += system->dimension;
+				else dx -= system->dimension;
+			}
+			if (fabs(dy) > system->dimension/2.0) 
+			{
+				if (dy < 0.0) dy += system->dimension;
+				else dy -= system->dimension;
+			}
+			if (fabs(dz) > system->dimension/2.0) 
+			{
+				if (dz < 0.0) dz += system->dimension;
+				else dz -= system->dimension;
+			}
+
+			atom->vx = dx/dt;
+			atom->vy = dy/dt;
+			atom->vz = dz/dt;
 //			if(fabs(atom->ax) > 0.005) atom->ax=0.0;
 //			if(fabs(atom->ay) > 0.005) atom->ay=0.0;
 //			if(fabs(atom->az) > 0.005) atom->az=0.0;

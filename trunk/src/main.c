@@ -23,12 +23,15 @@ int main(int argc, char **argv)
 	int i=0;
 	for(i=0; i<nSteps; i++)
 	{
+		system.step = i;
 		UpdateMolecules(&system);
-		if(i%1000 == 0)
-		printf("%2.5lf %2.5e  %2.2lf %2.2lf %2.2lf\n",system.r2min, system.vMax, system.potentialEnergy, system.kineticEnergy, 
+		if(i%100 == 0)
+		{
+		printf("%2.5lf %2.5e  %2.2e %2.2e %2.2e\n",system.r2min, system.vMax, system.potentialEnergy, system.kineticEnergy, 
 			system.potentialEnergy+system.kineticEnergy);
 //			usleep(10000);
 		RenderMolecules(&system);
+		}
 	}
   ReleaseMolecules(&system);
   killGLWindow();
