@@ -46,27 +46,7 @@ int RenderMolecules(SYSTEM *system)
 			}
   	}
   glEnd();
-/*  glBegin(GL_LINES);
-  	for(i=0;i<system->nAllMolecules;i++)
-  	{
-  		for(j=0;j<(system->allMolecules+i)->nAtoms; j++)
-  		{
-				glColor3f(AtomColor[((system->allMolecules+i)->atoms+j)->type][0],
-									AtomColor[((system->allMolecules+i)->atoms+j)->type][1],
-									AtomColor[((system->allMolecules+i)->atoms+j)->type][2]);
-				glVertex3f(	((system->allMolecules+i)->atoms+j)->x,
-										((system->allMolecules+i)->atoms+j)->y,
-										((system->allMolecules+i)->atoms+j)->z);
-  			glColor3f(1.0f, 1.0f, 1.0f);
-				glVertex3f(	((system->allMolecules+i)->atoms+j)->x + 
-										((system->allMolecules+i)->atoms+j)->ax,
-										((system->allMolecules+i)->atoms+j)->y +
-										((system->allMolecules+i)->atoms+j)->ay,
-										((system->allMolecules+i)->atoms+j)->z +
-										((system->allMolecules+i)->atoms+j)->az);
-			}
-  	}
-  glEnd();*/
+
   glBegin(GL_LINES);
   	for(i=0;i<system->nAllMolecules;i++)
   	{
