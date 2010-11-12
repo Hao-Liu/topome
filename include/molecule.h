@@ -110,7 +110,10 @@ typedef struct
 {
 	double dimension;
 	int nSlice;
+	int nGrids;
 	double rCut;
+	int is2D;
+	int step;
 	ATOM ***grid;
 	int *gridCount;
 	double potentialEnergy;
