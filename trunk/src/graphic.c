@@ -5,6 +5,7 @@ int RenderMolecules(SYSTEM *system)
 {
 	int i=0;
 	int j=0;
+	int k,l,im,in,io,m,n,o,p;
 	ATOM *atom1;
 	ATOM *atom2;
 	float AtomColor[][3]=
@@ -34,8 +35,9 @@ int RenderMolecules(SYSTEM *system)
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
   glTranslatef(0.0f, 0.0f, -system->dimension*2.0);
-  glRotatef((double)(system->step)/360.0, 1.0f, 1.0f, 0.0f);
+  glRotatef((double)(system->step)/36.0, 1.0f, 1.0f, 0.0f);
   glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension/2.0);
+
 	//Draw cell
 	glBegin(GL_LINES);
 		glColor3f(1.0f, 1.0f, 1.0f);
@@ -64,7 +66,57 @@ int RenderMolecules(SYSTEM *system)
 		glVertex3f(0.0f,system->dimension,system->dimension);
 		glVertex3f(system->dimension,system->dimension,system->dimension);
 	glEnd();
-
+/*
+  //Draw Connectivity
+	glBegin(GL_LINES);
+		glColor3f(0.1f, 0.1f, 0.8f);
+		for(i=0; i<system->nSlice; i++)
+		{
+			for(j=0; j<system->nSlice; j++)
+			{
+				for(k=0; k<system->nSlice; k++)
+				{
+					int idx1 = i*system->nSlice*system->nSlice+j*system->nSlice+k;
+					for(l=0; l<system->gridCount[idx1]; l++)
+					{
+						atom1 = system->grid[idx1][l];
+						for(im=i-1; im<i+2; im++)
+						{
+							for(in=j-1; in<j+2; in++)
+							{
+								for(io=k-1; io<k+2; io++)
+								{
+									m=im;
+									n=in;
+									o=io;
+									if(m<0) m+=system->nSlice;
+									if(n<0) n+=system->nSlice;
+									if(o<0) o+=system->nSlice;
+									if(m>=system->nSlice) m-=system->nSlice;
+									if(n>=system->nSlice) n-=system->nSlice;
+									if(o>=system->nSlice) o-=system->nSlice;
+									int idx2 = m*system->nSlice*system->nSlice+n*system->nSlice+o;
+									for(p=0; p<system->gridCount[idx2]; p++)
+									{
+										atom2 = system->grid[idx2][p];
+										if(atom1->mol == atom2->mol) continue;
+										if(	abs(atom1->x-atom2->x)<system->dimension/2.0 &&
+												abs(atom1->y-atom2->y)<system->dimension/2.0 &&
+												abs(atom1->z-atom2->z)<system->dimension/2.0 )
+										{
+											glVertex3f(	atom1->x,atom1->y,atom1->z);
+											glVertex3f(	atom2->x,atom2->y,atom2->z);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	glEnd();
+*/
 	//Draw Atoms
 	glBegin(GL_POINTS);
   	for(i=0;i<system->nAllMolecules;i++)
@@ -99,14 +151,29 @@ int RenderMolecules(SYSTEM *system)
 					glColor3f(AtomColor[atom2->type][0],AtomColor[atom2->type][1],AtomColor[atom2->type][2]);
 					glVertex3f(	atom2->x,atom2->y,atom2->z);
 					glVertex3f(	midx, midy, midz);
+				}
+				else
+				{
+				//FIXME	
+				}
 			}
-			else
-			{
-			//FIXME	
-			}
-		}
   	}
   glEnd();
+  
+  //Draw Grid;
+  glBegin(GL_LINES);
+		glColor3f(0.0f, 0.7f, 0.0f);
+		for(i=0; i<system->nSlice; i++)
+		{
+			glVertex3f(0.0f, system->dimension/system->nSlice*i, 0.0f);
+			glVertex3f(system->dimension, system->dimension/system->nSlice*i, 0.0f);
+		}
+ 		for(i=0; i<system->nSlice; i++)
+		{
+			glVertex3f( system->dimension/system->nSlice*i,0.0f, 0.0f);
+			glVertex3f( system->dimension/system->nSlice*i,system->dimension, 0.0f);
+		}
+ glEnd();
   if (GLWin.doubleBuffered)
   {
       glXSwapBuffers(GLWin.dpy, GLWin.win);
@@ -122,7 +189,8 @@ void resizeGLScene(unsigned int width, unsigned int height)
     glViewport(0, 0, width, height);    /* Reset The Current Viewport And Perspective Transformation */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+//		glOrtho(-(GLfloat)width / (GLfloat)height * 10.0, (GLfloat)width / (GLfloat)height * 10.0, -10.0, 10.0,  -100.0, 100.0);
+    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 1000.0f);
     glMatrixMode(GL_MODELVIEW);
 }
 
