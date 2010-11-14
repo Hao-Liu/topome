@@ -22,7 +22,7 @@ int InitSystem(SYSTEM *system, char *infile)
 
 
 	fgets(buffer, 200, fp);
-	sscanf(buffer, "%lf %lf %d", &(system->dimension), &(system->rCut), &(system->is2D));
+	sscanf(buffer, "%d %lf %lf %d", &(system->nSteps), &(system->dimension), &(system->rCut), &(system->is2D));
 
 	system->nSlice = floor(system->dimension / system->rCut);
 	system->nGrids = system->nSlice*system->nSlice*system->nSlice;
@@ -568,9 +568,9 @@ int CalculateAngleForce(SYSTEM *system)
 int CalculatePairForce(SYSTEM *system)
 {
 	int i,j,k,l,m,n,o,p,im,in,io;
-	double dx,dy,dz,r2,r4,r8,r14,LJCoef,coulCoef,forceCoef;
+	double dx,dy,dz,r2,r,r6,LJCoef,coulCoef,forceCoef;
 	double Cepsilon = 0.01;
-	double epsilon = 0.0001;
+	double epsilon = 0.001;
 	double soft = 0.001;
 	ATOM *atom1;
 	ATOM *atom2;
@@ -585,9 +585,9 @@ int CalculatePairForce(SYSTEM *system)
 					atom1 = system->grid[i*system->nSlice*system->nSlice+j*system->nSlice+k][l];
 					for(im=i-1; im<i+2; im++)
 					{
-						for(in=i-1; in<i+2; in++)
+						for(in=j-1; in<j+2; in++)
 						{
-							for(io=i-1; io<i+2; io++)
+							for(io=k-1; io<k+2; io++)
 							{
 								m=im;
 								n=in;
@@ -624,18 +624,25 @@ int CalculatePairForce(SYSTEM *system)
 									}
 
 									r2 = dx*dx + dy*dy + dz*dz + soft;
-									coulCoef = Cepsilon*atom2->charge*atom1->charge/sqrt(r2);
-									if (r2 > system->rCut) continue;
-									if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
-									r4 = r2*r2;
-									r8 = r4*r4;
-									r14 = r8*r4*r2;
-									LJCoef = 4.0 * epsilon * (6.0/r8 - 12.0/r14);
+									if (r2 > system->rCut*system->rCut) continue;
+									r = sqrt(r2);
+
+									coulCoef = Cepsilon*atom2->charge*atom1->charge/r/r2;
+
+									if(r < system->r2min) system->r2min = r; //DEBUG FIXME
+									
+									r6 = r2*r2*r2;
+									
+									LJCoef = 4.0 * epsilon * (6.0 - 12.0/r6)/r6/r2;
+						
 									forceCoef = (LJCoef-coulCoef) / atom1->mass;
-									if (forceCoef < -0.01) forceCoef=-0.01;
+//									if (forceCoef < -0.01) forceCoef=-0.01;
 									atom1->ax += forceCoef * dx;
 									atom1->ay += forceCoef * dy;
 									atom1->az += forceCoef * dz;
+									
+									system->potentialEnergy -= 4.0 * epsilon * (1.0 - 1.0/r6)/r6;
+									system->potentialEnergy += Cepsilon*atom2->charge*atom1->charge/r;
 									
 								}
 							}
@@ -692,15 +699,16 @@ int	CalculatePairForceOld(SYSTEM *system)
 					}
 
 					r2 = dx*dx + dy*dy + dz*dz + soft;
-					if (r2 < 1.0) r2 = 1.0;  //FIXME
+//					if (r2 < 1.0) r2 = 1.0;  //FIXME
 					if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
-					r4 = r2*r2*r2;
+					r4 = r2*r2;
 					r8 = r4*r4;
 					r14 = r8*r4*r2;
-					forceCoef = 4.0 * epsilon * (1.0/r4 - 1.0/r8) / ((system->allMolecules+i)->atoms+j)->mass;
-					((system->allMolecules+i)->atoms+j)->ax += forceCoef * dx;
-					((system->allMolecules+i)->atoms+j)->ay += forceCoef * dy;
-					((system->allMolecules+i)->atoms+j)->az += forceCoef * dz;
+					forceCoef = 4.0 * epsilon * (1.0/r8 - 1.0/r14) / ((system->allMolecules+i)->atoms+j)->mass;
+					((system->allMolecules+i)->atoms+j)->ax -= forceCoef * dx;
+					((system->allMolecules+i)->atoms+j)->ay -= forceCoef * dy;
+					((system->allMolecules+i)->atoms+j)->az -= forceCoef * dz;
+					system->potentialEnergy -= 4.0 * epsilon * (1.0 - 1.0/r4/r2)/r4/r2;
 					
 				}
 			}
@@ -814,11 +822,9 @@ int	CalculateForce(SYSTEM *system)
 		}
 	}
 	system->potentialEnergy = 0.0;
-	CreateGridList(system);
 	CalculateBondForce(system);
 	CalculateAngleForce(system);
 	CalculatePairForce(system);
-	ReleaseGridList(system);
 //	getchar();
 	return 1;
 }
@@ -828,7 +834,7 @@ int	Integrate(SYSTEM *system)
 	int i=0;
 	int j=0;
 	double newx,newy,newz,dx,dy,dz;
-	double dt=1.0;
+	double dt=0.5;
 	ATOM *atom;
 //	double max = 0.0;
 	for(i=0; i<system->nAllMolecules; i++)
@@ -917,7 +923,10 @@ int	CalculateKineticEnergy(SYSTEM *system)
 int	UpdateMolecules(SYSTEM *system)
 {
 	Integrate(system);
+	CreateGridList(system);
 	CalculateForce(system);
+	RenderMolecules(system);
+	ReleaseGridList(system);
 	CalculateKineticEnergy(system);
 	return 1;
 }

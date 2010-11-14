@@ -108,6 +108,7 @@ typedef struct
 
 typedef struct
 {
+	int nSteps;
 	double dimension;
 	int nSlice;
 	int nGrids;

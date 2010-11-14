@@ -66,6 +66,7 @@ $(OUT): $(OBJ_FILES)
 $(OBJ_DIR)%.d:%.c
 	@echo -e "building: $(notdir $@) \t\t please wait ...\n"
 	@$(CC) $< $(INCLUDE) -MM -MD -o $@
+#	@$(CC) $< $(INCLUDE) -o $@
 -include $(addprefix $(OBJ_DIR),$(DEP_FILES))
 config: dir
 dir:
