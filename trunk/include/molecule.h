@@ -110,6 +110,7 @@ typedef struct
 {
 	int nSteps;
 	double dimension;
+	double dimensionTarget;
 	int nSlice;
 	int nGrids;
 	double rCut;
