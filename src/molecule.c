@@ -22,12 +22,9 @@ int InitSystem(SYSTEM *system, char *infile)
 
 
 	fgets(buffer, 200, fp);
-	sscanf(buffer, "%d %lf %lf %d", &(system->nSteps), &(system->dimension), &(system->rCut), &(system->is2D));
+	sscanf(buffer, "%d %lf %lf %d", &(system->nSteps), &(system->dimensionTarget), &(system->rCut), &(system->is2D));
 
-	system->nSlice = floor(system->dimension / system->rCut);
-	system->nGrids = system->nSlice*system->nSlice*system->nSlice;
-	system->grid = malloc(system->nGrids*sizeof(ATOM**));
-	system->gridCount = malloc(system->nGrids*sizeof(int));
+	system->dimension = system->dimensionTarget*5.0;
 	
 	fgets(buffer, 200, fp);
 		sscanf(buffer, "%d %d %d %d", 
@@ -240,14 +237,14 @@ int CreateMolecules(SYSTEM *system)
 					(system->moleculeTypes+i)->molecule.nImpropers;
 					
 			(system->allMolecules+iAll)->atoms = malloc((system->allMolecules+iAll)->nAtoms*sizeof(ATOM));
-/*			
+			
 			//Initiate molecules at random position
 			double molecularPosx=(double)rand()/(double)RAND_MAX*system->dimension;
 			double molecularPosy=(double)rand()/(double)RAND_MAX*system->dimension;
 			double molecularPosz=(double)rand()/(double)RAND_MAX*system->dimension;
-*/			
+			
 			//Initiate molecules at grid position
-			if(system->is2D)
+/*			if(system->is2D)
 			{
 				countPerDim = ceil(sqrt((system->moleculeTypes+i)->nMolecules));
 				molecularPosx = (double)(j%countPerDim)/(double)countPerDim*system->dimension;
@@ -261,7 +258,7 @@ int CreateMolecules(SYSTEM *system)
 				molecularPosy= (double)(j%(countPerDim*countPerDim)/countPerDim)/(double)countPerDim*system->dimension;
 				molecularPosz= (double)(j/(countPerDim*countPerDim))/(double)countPerDim*system->dimension;
 			}
-
+*/
 			for(k=0; k<(system->allMolecules+iAll)->nAtoms; k++)
 			{
 				((system->allMolecules+iAll)->atoms+k)->x = 
@@ -723,11 +720,18 @@ int ReleaseGridList(SYSTEM *system)
 	{
 		free(system->grid[i]);
 	}
+	free(system->grid);
+	free(system->gridCount);
 	return 1;
 }
 int CreateGridList(SYSTEM *system)
 {
 	int i,j,k,ix,iy,iz,idx;
+	
+	system->nSlice = floor(system->dimension / system->rCut);
+	system->nGrids = system->nSlice*system->nSlice*system->nSlice;
+	system->grid = malloc(system->nGrids*sizeof(ATOM**));
+	system->gridCount = malloc(system->nGrids*sizeof(int));
 	
 	//get grid counts
 	memset(system->gridCount, 0, system->nGrids*sizeof(int));
@@ -829,6 +833,7 @@ int	CalculateForce(SYSTEM *system)
 	return 1;
 }
 
+
 int	Integrate(SYSTEM *system)
 {
 	int i=0;
@@ -928,6 +933,111 @@ int	UpdateMolecules(SYSTEM *system)
 	RenderMolecules(system);
 	ReleaseGridList(system);
 	CalculateKineticEnergy(system);
+	return 1;
+}
+
+int	IntegrateRelaxation(SYSTEM *system)
+{
+	int i=0;
+	int j=0;
+	double newx,newy,newz,dx,dy,dz;
+	double dt=0.5;
+	ATOM *atom;
+//	double max = 0.0;
+	for(i=0; i<system->nAllMolecules; i++)
+	{
+		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
+		{
+			atom = (system->allMolecules+i)->atoms+j;
+			
+			atom->ax -= atom->vx;
+			atom->ay -= atom->vy;
+			atom->az -= atom->vz;
+			
+			newx = 2.0 *	atom->x - atom->oldx + atom->ax * dt * dt;
+			newy = 2.0 *	atom->y - atom->oldy + atom->ay * dt * dt;
+			newz = 2.0 *	atom->z - atom->oldz + atom->az * dt * dt;
+			
+			atom->oldx = atom->x;
+			atom->oldy = atom->y;
+			atom->oldz = atom->z;
+			dx = newx - atom->oldx*0.999;
+			dy = newy - atom->oldy*0.999;
+			dz = newz - atom->oldz*0.999;
+			//get minimun image
+			if (fabs(dx) > system->dimension/2.0) 
+			{
+				if (dx < 0.0) dx += system->dimension;
+				else dx -= system->dimension;
+			}
+			if (fabs(dy) > system->dimension/2.0) 
+			{
+				if (dy < 0.0) dy += system->dimension;
+				else dy -= system->dimension;
+			}
+			if (fabs(dz) > system->dimension/2.0) 
+			{
+				if (dz < 0.0) dz += system->dimension;
+				else dz -= system->dimension;
+			}
+
+			atom->vx = dx/dt;
+			atom->vy = dy/dt;
+			atom->vz = dz/dt;
+//			if(fabs(atom->ax) > 0.005) atom->ax=0.0;
+//			if(fabs(atom->ay) > 0.005) atom->ay=0.0;
+//			if(fabs(atom->az) > 0.005) atom->az=0.0;
+										
+			//Calculate maximum accelaretion
+			if(fabs(atom->ax) > system->vMax)  system->vMax=fabs(atom->ax) ;
+			if(fabs(atom->ay) > system->vMax)  system->vMax=fabs(atom->ay) ;
+			if(fabs(atom->az) > system->vMax)  system->vMax=fabs(atom->az) ;
+	
+			
+			if(newx<0) newx+=system->dimension;
+			if(newy<0) newy+=system->dimension;
+			if(newz<0) newz+=system->dimension;
+			if(newx>=system->dimension) newx-=system->dimension;
+			if(newy>=system->dimension) newy-=system->dimension;
+			if(newz>=system->dimension) newz-=system->dimension;
+			atom->x = newx;
+			atom->y = newy;
+			atom->z = newz;
+		}
+	}
+	return 1;
+}
+
+
+int RelaxMolecules(SYSTEM *system)
+{
+	IntegrateRelaxation(system);
+	CreateGridList(system);
+	CalculateForce(system);
+	RenderMolecules(system);
+	ReleaseGridList(system);
+	CalculateKineticEnergy(system);
+	return 1;
+}
+
+int ResetVelocity(SYSTEM *system)
+{
+	int i,j;
+	for(i=0; i<system->nAllMolecules; i++)
+	{
+		for(j=0; j<(system->allMolecules+i)->nAtoms; j++)
+		{
+			((system->allMolecules+i)->atoms+j)->vx=0.0;
+			((system->allMolecules+i)->atoms+j)->vy=0.0;
+			((system->allMolecules+i)->atoms+j)->vz=0.0;
+			((system->allMolecules+i)->atoms+j)->ax=0.0;
+			((system->allMolecules+i)->atoms+j)->ay=0.0;
+			((system->allMolecules+i)->atoms+j)->az=0.0;
+			((system->allMolecules+i)->atoms+j)->oldx=((system->allMolecules+i)->atoms+j)->x;
+			((system->allMolecules+i)->atoms+j)->oldy=((system->allMolecules+i)->atoms+j)->y;
+			((system->allMolecules+i)->atoms+j)->oldz=((system->allMolecules+i)->atoms+j)->z;
+		}
+	}
 	return 1;
 }
 
