@@ -1,6 +1,5 @@
 #include "graphic.h"
 
-
 int RenderMolecules(SYSTEM *system)
 {
 	int i=0;
@@ -35,6 +34,7 @@ int RenderMolecules(SYSTEM *system)
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
   glTranslatef(0.0f, 0.0f, -system->dimension*2.0);
+    glMultMatrixf(GLWin.Transform.M);										// NEW: Apply Dynamic Transform
 //  glRotatef((double)(system->step)/36.0, 1.0f, 1.0f, 0.0f);
   glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension/2.0);
 
@@ -205,6 +205,10 @@ int initGL(void)
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
     /* we use resizeGLScene once to set up our initial perspective */
     resizeGLScene(GLWin.width, GLWin.height);
+    ArcBallInit(GLWin.width, GLWin.height, &(GLWin.arcball));
+    Matrix3fSetIdentity(&(GLWin.LastRot));
+    Matrix3fSetIdentity(&(GLWin.ThisRot));
+	  Matrix4fSetIdentity(&(GLWin.Transform));		// Reset Rotation
     /* Reset the rotation angles of our objects */
     rotTri = 0;
     rotQuad = 0;    
@@ -235,6 +239,85 @@ GLvoid killGLWindow(void)
     XCloseDisplay(GLWin.dpy);
 }
 
+
+void Update (long milliseconds)									// Perform Motion Updates Here
+{
+  if (GLWin.isRClicked)													// If Right Mouse Clicked, Reset All Rotations
+  {
+		Matrix3fSetIdentity(&(GLWin.LastRot));								// Reset Rotation
+		Matrix3fSetIdentity(&(GLWin.ThisRot));								// Reset Rotation
+	  Matrix4fSetRotationFromMatrix3f(&(GLWin.Transform), &(GLWin.ThisRot));		// Reset Rotation
+  }
+
+  if (!GLWin.isDragging)												// Not Dragging
+  {
+    if (GLWin.isClicked)												// First Click
+    {
+			GLWin.isDragging = 1;										// Prepare For Dragging
+			GLWin.LastRot = GLWin.ThisRot;										// Set Last Static Rotation To Last Dynamic One
+			ArcBallClick(&(GLWin.MousePt), &(GLWin.arcball));								// Update Start Vector And Prepare For Dragging
+    }
+  }
+  else
+  {
+    if (GLWin.isClicked)												// Still Clicked, So Still Dragging
+    {
+      Quat4fT     ThisQuat;
+
+      ArcBallDrag(&(GLWin.MousePt), &ThisQuat, &(GLWin.arcball));						// Update End Vector And Get Rotation As Quaternion
+      Matrix3fSetRotationFromQuat4f(&(GLWin.ThisRot), &ThisQuat);		// Convert Quaternion Into Matrix3fT
+      Matrix3fMulMatrix3f(&(GLWin.ThisRot), &(GLWin.LastRot));				// Accumulate Last Rotation Into This One
+      Matrix4fSetRotationFromMatrix3f(&(GLWin.Transform), &(GLWin.ThisRot));	// Set Our Final Transform's Rotation From This One
+    }
+    else														// No Longer Dragging
+        GLWin.isDragging = 0;
+  }
+}
+
+void GraphicOutput(SYSTEM *system)
+{
+  XEvent event;
+	struct timeval tv, tickCount;
+
+	while(XPending(GLWin.dpy) > 0)
+	{
+		XNextEvent(GLWin.dpy, &event);
+		switch(event.type)
+		{
+			case Expose:
+				if(event.xexpose.count != 0)	break;
+				RenderMolecules(system);   	break;
+			case ButtonPress:
+				switch( event.xbutton.button ) 
+				{
+					case 1: GLWin.isClicked = 1; break;
+					case 3: GLWin.isRClicked = 1; break;
+				}
+				break;
+			case ButtonRelease:
+				switch( event.xbutton.button ) 
+				{
+					case 1: GLWin.isClicked = 0; break;
+					case 3: GLWin.isRClicked = 0; break;
+				}
+				break;
+			case MotionNotify:
+				GLWin.MousePt.s.X = event.xmotion.x;
+				GLWin.MousePt.s.Y = event.xmotion.y;
+				break;
+			default:
+				break;
+		}
+	}
+
+	gettimeofday( &tv, NULL );
+	tickCount.tv_sec = tv.tv_sec - GLWin.lastTickCount.tv_sec;
+	tickCount.tv_usec = tv.tv_usec - GLWin.lastTickCount.tv_usec;
+
+	Update(tickCount.tv_usec / 1000 + tickCount.tv_sec * 1000);
+	GLWin.lastTickCount = tickCount;
+	RenderMolecules(system);
+}
 /* this function creates our window and sets it up properly */
 /* FIXME: bits is currently unused */
 Bool createGLWindow(char* title, int width, int height, int bits,
@@ -308,8 +391,8 @@ Bool createGLWindow(char* title, int width, int height, int bits,
     
         /* create a fullscreen window */
         GLWin.attr.override_redirect = True;
-        GLWin.attr.event_mask = ExposureMask | KeyPressMask | ButtonPressMask |
-            StructureNotifyMask;
+        GLWin.attr.event_mask = ExposureMask | KeyPressMask | ButtonPressMask | 
+            PointerMotionMask | ButtonReleaseMask | StructureNotifyMask ;
         GLWin.win = XCreateWindow(GLWin.dpy, RootWindow(GLWin.dpy, vi->screen),
             0, 0, dpyWidth, dpyHeight, 0, vi->depth, InputOutput, vi->visual,
             CWBorderPixel | CWColormap | CWEventMask | CWOverrideRedirect,
@@ -325,7 +408,7 @@ Bool createGLWindow(char* title, int width, int height, int bits,
     {
         /* create a window in window mode*/
         GLWin.attr.event_mask = ExposureMask | KeyPressMask | ButtonPressMask |
-            StructureNotifyMask;
+            PointerMotionMask | ButtonReleaseMask | StructureNotifyMask;
         GLWin.win = XCreateWindow(GLWin.dpy, RootWindow(GLWin.dpy, vi->screen),
             0, 0, width, height, 0, vi->depth, InputOutput, vi->visual,
             CWBorderPixel | CWColormap | CWEventMask, &GLWin.attr);

@@ -1,28 +1,34 @@
 #include "molecule.h"
 #define ATOM_TYPE_MAX 21
 
-int InitSystem(SYSTEM *system, char *infile)
+int InitSystem(SYSTEM *system, int argc, char **argv)
 {
 	int i=0;
 	int j=0;
 	int k=0;
 	
+	if(argc!=2)
+  {
+  	printf("Invalid arguments!\n");
+  	return 0;
+  }
+  
+
 	const char AtomType[ATOM_TYPE_MAX][4]=
 	{
 		"X",
 		"H","He","Li","Be","B","C","N","O","F","Ne",
 		"Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca",
 	};
-	FILE *fp = fopen(infile,"r");
+	FILE *fp = fopen(argv[1],"r");
 	char buffer[200];
 	char type[4];
 	int idummy;
-	system->r2min = 100.0; //DEBUG FIXME
-	system->vMax = 0.0; //DEBUG FIXME
-
+	system->verboseInterval = 100;
+	system->graphicInterval = 10;
 
 	fgets(buffer, 200, fp);
-	sscanf(buffer, "%d %lf %lf %d", &(system->nSteps), &(system->dimensionTarget), &(system->rCut), &(system->is2D));
+	sscanf(buffer, "%d %lf %lf", &(system->nSteps), &(system->dimensionTarget), &(system->rCut));
 
 	system->dimension = system->dimensionTarget*5.0;
 	
@@ -242,7 +248,6 @@ int CreateMolecules(SYSTEM *system)
 			double molecularPosx=(double)rand()/(double)RAND_MAX*system->dimension;
 			double molecularPosy=(double)rand()/(double)RAND_MAX*system->dimension;
 			double molecularPosz=(double)rand()/(double)RAND_MAX*system->dimension;
-			
 			//Initiate molecules at grid position
 /*			if(system->is2D)
 			{
@@ -626,8 +631,6 @@ int CalculatePairForce(SYSTEM *system)
 
 									coulCoef = Cepsilon*atom2->charge*atom1->charge/r/r2;
 
-									if(r < system->r2min) system->r2min = r; //DEBUG FIXME
-									
 									r6 = r2*r2*r2;
 									
 									LJCoef = 4.0 * epsilon * (6.0 - 12.0/r6)/r6/r2;
@@ -696,8 +699,6 @@ int	CalculatePairForceOld(SYSTEM *system)
 					}
 
 					r2 = dx*dx + dy*dy + dz*dz + soft;
-//					if (r2 < 1.0) r2 = 1.0;  //FIXME
-					if(r2 < system->r2min) system->r2min = r2; //DEBUG FIXME
 					r4 = r2*r2;
 					r8 = r4*r4;
 					r14 = r8*r4*r2;
@@ -881,11 +882,6 @@ int	Integrate(SYSTEM *system)
 //			if(fabs(atom->ay) > 0.005) atom->ay=0.0;
 //			if(fabs(atom->az) > 0.005) atom->az=0.0;
 										
-			//Calculate maximum accelaretion
-			if(fabs(atom->ax) > system->vMax)  system->vMax=fabs(atom->ax) ;
-			if(fabs(atom->ay) > system->vMax)  system->vMax=fabs(atom->ay) ;
-			if(fabs(atom->az) > system->vMax)  system->vMax=fabs(atom->az) ;
-	
 			
 			if(newx<0) newx+=system->dimension;
 			if(newy<0) newy+=system->dimension;
@@ -930,7 +926,7 @@ int	UpdateMolecules(SYSTEM *system)
 	Integrate(system);
 	CreateGridList(system);
 	CalculateForce(system);
-	RenderMolecules(system);
+//	RenderMolecules(system);
 	ReleaseGridList(system);
 	CalculateKineticEnergy(system);
 	return 1;
@@ -988,11 +984,6 @@ int	IntegrateRelaxation(SYSTEM *system)
 //			if(fabs(atom->ay) > 0.005) atom->ay=0.0;
 //			if(fabs(atom->az) > 0.005) atom->az=0.0;
 										
-			//Calculate maximum accelaretion
-			if(fabs(atom->ax) > system->vMax)  system->vMax=fabs(atom->ax) ;
-			if(fabs(atom->ay) > system->vMax)  system->vMax=fabs(atom->ay) ;
-			if(fabs(atom->az) > system->vMax)  system->vMax=fabs(atom->az) ;
-	
 			
 			if(newx<0) newx+=system->dimension;
 			if(newy<0) newy+=system->dimension;
@@ -1014,7 +1005,7 @@ int RelaxMolecules(SYSTEM *system)
 	IntegrateRelaxation(system);
 	CreateGridList(system);
 	CalculateForce(system);
-	RenderMolecules(system);
+//	RenderMolecules(system);
 	ReleaseGridList(system);
 	CalculateKineticEnergy(system);
 	return 1;
