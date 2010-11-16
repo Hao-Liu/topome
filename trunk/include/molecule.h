@@ -108,20 +108,19 @@ typedef struct
 
 typedef struct
 {
+	int step;
 	int nSteps;
+	int verboseInterval;
+	int graphicInterval;
 	double dimension;
 	double dimensionTarget;
 	int nSlice;
 	int nGrids;
 	double rCut;
-	int is2D;
-	int step;
 	ATOM ***grid;
 	int *gridCount;
 	double potentialEnergy;
 	double kineticEnergy;
-	double r2min; //DEBUG FIXME
-	double vMax; //DEBUG FIXME
 
 	int nBondTypes;
 	BONDTYPE *bondTypes;
@@ -137,7 +136,7 @@ typedef struct
 	int nAllMolecules;
 	MOLECULE *allMolecules;
 } SYSTEM;
-int InitSystem(SYSTEM *system, char *infile);
+int InitSystem(SYSTEM *system,int argc, char **argv);
 int CreateMolecules(SYSTEM *system);
 int	UpdateMolecules(SYSTEM *system);
 int ReleaseMolecules(SYSTEM *system);

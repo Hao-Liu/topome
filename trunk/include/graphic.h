@@ -5,7 +5,7 @@
 #include <GL/glu.h>
 #include <X11/extensions/xf86vmode.h>
 #include <X11/keysym.h>
-
+#include <arcball.h>
 /* stuff about our window grouped together */
 typedef struct {
     Display *dpy;
@@ -17,8 +17,16 @@ typedef struct {
     Bool doubleBuffered;
     XF86VidModeModeInfo deskMode;
     int x, y;
+    
+    int isClicked, isRClicked, isDragging;
+    Matrix3fT   LastRot, ThisRot;
+    Matrix4fT   Transform;
+    Point2fT    MousePt;
+    ArcBall			arcball;
+    
     unsigned int width, height;
     unsigned int depth;    
+		struct timeval lastTickCount;				// Tick Counter
 } GLWindow;
 
 /* attributes for a single buffered visual in RGBA format with at least
