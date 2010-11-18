@@ -1,12 +1,4 @@
 #include "graphic.h"
-
-int RenderMolecules(SYSTEM *system)
-{
-	int i=0;
-	int j=0;
-	int k,l,im,in,io,m,n,o,p;
-	ATOM *atom1;
-	ATOM *atom2;
 	float AtomColor[][3]=
 	{
 	{1.0f, 1.0f, 1.0f}, //X
@@ -31,13 +23,9 @@ int RenderMolecules(SYSTEM *system)
 	{1.0f, 1.0f, 1.0f}, //K
 	{0.5f, 0.5f, 1.0f}, //Ca
 	};
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glLoadIdentity();
-  glTranslatef(0.0f, 0.0f, -system->dimension*2.0);
-    glMultMatrixf(GLWin.Transform.M);										// NEW: Apply Dynamic Transform
-//  glRotatef((double)(system->step)/36.0, 1.0f, 1.0f, 0.0f);
-  glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension/2.0);
 
+void RenderCell(SYSTEM *system)
+{
 	//Draw cell
 	glBegin(GL_LINES);
 		glColor3f(1.0f, 1.0f, 1.0f);
@@ -66,7 +54,12 @@ int RenderMolecules(SYSTEM *system)
 		glVertex3f(0.0f,system->dimension,system->dimension);
 		glVertex3f(system->dimension,system->dimension,system->dimension);
 	glEnd();
-/*
+}
+void RenderConnectivity(SYSTEM *system)
+{
+	int i,j,k,l,m,n,o,p,im,in,io;
+	ATOM *atom1;
+	ATOM *atom2;
   //Draw Connectivity
 	glBegin(GL_LINES);
 		glColor3f(0.1f, 0.1f, 0.8f);
@@ -116,7 +109,12 @@ int RenderMolecules(SYSTEM *system)
 			}
 		}
 	glEnd();
-*/
+}
+
+void RenderAtoms(SYSTEM *system)
+{
+	int i,j;
+	ATOM *atom1;
 	//Draw Atoms
 	glBegin(GL_POINTS);
   	for(i=0;i<system->nAllMolecules;i++)
@@ -129,6 +127,13 @@ int RenderMolecules(SYSTEM *system)
 		}
   	}
   glEnd();
+}
+
+void RenderBonds(SYSTEM *system)
+{
+	int i,j;
+	ATOM *atom1;
+	ATOM *atom2;
 
 	//Draw Bonds
   glBegin(GL_LINES);
@@ -159,6 +164,25 @@ int RenderMolecules(SYSTEM *system)
 			}
   	}
   glEnd();
+}
+int RenderSystem(SYSTEM *system)
+{
+	int i=0;
+	int j=0;
+	int k,l,im,in,io,m,n,o,p;
+	ATOM *atom1;
+	ATOM *atom2;
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glLoadIdentity();
+  glTranslatef(0.0f, 0.0f, -system->dimension*2.0);
+    glMultMatrixf(GLWin.Transform.M);										// NEW: Apply Dynamic Transform
+//  glRotatef((double)(system->step)/36.0, 1.0f, 1.0f, 0.0f);
+  glTranslatef(-system->dimension/2.0, -system->dimension/2.0, -system->dimension/2.0);
+
+	RenderCell(system);
+//	RenderConnectivity(system);
+	RenderAtoms(system);
+	RenderBonds(system);
   
   //Draw Grid;
   glBegin(GL_LINES);
@@ -209,9 +233,7 @@ int initGL(void)
     Matrix3fSetIdentity(&(GLWin.LastRot));
     Matrix3fSetIdentity(&(GLWin.ThisRot));
 	  Matrix4fSetIdentity(&(GLWin.Transform));		// Reset Rotation
-    /* Reset the rotation angles of our objects */
-    rotTri = 0;
-    rotQuad = 0;    
+
     glFlush();
     return True;
 }
@@ -240,7 +262,7 @@ GLvoid killGLWindow(void)
 }
 
 
-void Update (long milliseconds)									// Perform Motion Updates Here
+void UpdateTransformMatrix (long milliseconds)									// Perform Motion Updates Here
 {
   if (GLWin.isRClicked)													// If Right Mouse Clicked, Reset All Rotations
   {
@@ -286,7 +308,7 @@ void GraphicOutput(SYSTEM *system)
 		{
 			case Expose:
 				if(event.xexpose.count != 0)	break;
-				RenderMolecules(system);   	break;
+				RenderSystem(system);   	break;
 			case ButtonPress:
 				switch( event.xbutton.button ) 
 				{
@@ -314,9 +336,9 @@ void GraphicOutput(SYSTEM *system)
 	tickCount.tv_sec = tv.tv_sec - GLWin.lastTickCount.tv_sec;
 	tickCount.tv_usec = tv.tv_usec - GLWin.lastTickCount.tv_usec;
 
-	Update(tickCount.tv_usec / 1000 + tickCount.tv_sec * 1000);
+	UpdateTransformMatrix(tickCount.tv_usec / 1000 + tickCount.tv_sec * 1000);
 	GLWin.lastTickCount = tickCount;
-	RenderMolecules(system);
+	RenderSystem(system);
 }
 /* this function creates our window and sets it up properly */
 /* FIXME: bits is currently unused */

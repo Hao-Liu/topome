@@ -47,7 +47,7 @@ static int attrListDbl[] = { GLX_RGBA, GLX_DOUBLEBUFFER,
     None };
 
 GLWindow GLWin;
-GLfloat rotTri, rotQuad;
+//GLfloat rotTri, rotQuad;
 
 void resizeGLScene(unsigned int width, unsigned int height);
 int initGL(void);
