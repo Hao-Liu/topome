@@ -14,23 +14,14 @@
 /**   08/17/2003 - (TJG) - Creation                         **/
 /**   09/23/2003 - (TJG) - Bug fix and optimization         **/
 /**   09/25/2003 - (TJG) - Version for NeHe Basecode users  **/
-/**                                                         **/
+/**   11/18/2010 - (LH)  - Revised to C for topome          **/
 /*************************************************************/
-#include <GL/glx.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <math.h>
 #ifndef _ArcBall_h
 #define _ArcBall_h
 
+#include <GL/gl.h>
+#include <math.h>
 // 8<--Snip here if you have your own math types/funcs-->8 
-
-//Only support assertions in debug builds
-#ifdef _DEBUG
-# include "assert.h"
-#else
-# define assert(x) { }
-#endif
 
 //Math types derived from the KempoApi tMath library
     typedef union Tuple2f_t
@@ -143,8 +134,6 @@ typedef struct ArcBall_t
     inline
     static void Point2fAdd(Point2fT* NewObj, const Tuple2fT* t1)
     {
-        assert(NewObj && t1);
-
         NewObj->s.X += t1->s.X;
         NewObj->s.Y += t1->s.Y;
     }
@@ -156,8 +145,6 @@ typedef struct ArcBall_t
     inline
     static void Point2fSub(Point2fT* NewObj, const Tuple2fT* t1)
     {
-        assert(NewObj && t1);
-
         NewObj->s.X -= t1->s.X;
         NewObj->s.Y -= t1->s.Y;
     }
@@ -171,8 +158,6 @@ typedef struct ArcBall_t
     static void Vector3fCross(Vector3fT* NewObj, const Vector3fT* v1, const Vector3fT* v2)
     {
         Vector3fT Result; //safe not to initialize
-
-        assert(NewObj && v1 && v2);
 
         // store on stack once for aliasing-safty
         // i.e. safe when a.cross(a, b)
@@ -192,8 +177,6 @@ typedef struct ArcBall_t
     inline
     static GLfloat Vector3fDot(const Vector3fT* NewObj, const Vector3fT* v1)
     {
-        assert(NewObj && v1);
-
         return  (NewObj->s.X * v1->s.X) +
                 (NewObj->s.Y * v1->s.Y) +
                 (NewObj->s.Z * v1->s.Z);
@@ -206,8 +189,6 @@ typedef struct ArcBall_t
     inline
     static GLfloat Vector3fLengthSquared(const Vector3fT* NewObj)
     {
-        assert(NewObj);
-
         return  (NewObj->s.X * NewObj->s.X) +
                 (NewObj->s.Y * NewObj->s.Y) +
                 (NewObj->s.Z * NewObj->s.Z);
@@ -220,8 +201,6 @@ typedef struct ArcBall_t
     inline
     static GLfloat Vector3fLength(const Vector3fT* NewObj)
     {
-        assert(NewObj);
-
         return FuncSqrt(Vector3fLengthSquared(NewObj));
     }
 
@@ -280,8 +259,6 @@ typedef struct ArcBall_t
         GLfloat xx, xy, xz;
         GLfloat yy, yz, zz;
 
-        assert(NewObj && q1);
-
         n = (q1->s.X * q1->s.X) + (q1->s.Y * q1->s.Y) + (q1->s.Z * q1->s.Z) + (q1->s.W * q1->s.W);
         s = (n > 0.0f) ? (2.0f / n) : 0.0f;
 
@@ -305,8 +282,6 @@ typedef struct ArcBall_t
     {
         Matrix3fT Result; //safe not to initialize
 
-        assert(NewObj && m1);
-
         // alias-safe way.
         Result.s.M00 = (NewObj->s.M00 * m1->s.M00) + (NewObj->s.M01 * m1->s.M10) + (NewObj->s.M02 * m1->s.M20);
         Result.s.M01 = (NewObj->s.M00 * m1->s.M01) + (NewObj->s.M01 * m1->s.M11) + (NewObj->s.M02 * m1->s.M21);
@@ -327,8 +302,6 @@ typedef struct ArcBall_t
     inline
     static void Matrix4fSetRotationScaleFromMatrix4f(Matrix4fT* NewObj, const Matrix4fT* m1)
     {
-        assert(NewObj && m1);
-
         NewObj->s.XX = m1->s.XX; NewObj->s.YX = m1->s.YX; NewObj->s.ZX = m1->s.ZX;
         NewObj->s.XY = m1->s.XY; NewObj->s.YY = m1->s.YY; NewObj->s.ZY = m1->s.ZY;
         NewObj->s.XZ = m1->s.XZ; NewObj->s.YZ = m1->s.YZ; NewObj->s.ZZ = m1->s.ZZ;
@@ -345,8 +318,6 @@ typedef struct ArcBall_t
     static GLfloat Matrix4fSVD(const Matrix4fT* NewObj, Matrix3fT* rot3, Matrix4fT* rot4)
     {
         GLfloat s, n;
-
-        assert(NewObj);
 
         // this is a simple svd.
         // Not complete but fast and reasonable.
@@ -425,8 +396,6 @@ typedef struct ArcBall_t
     inline
     static void Matrix4fSetRotationScaleFromMatrix3f(Matrix4fT* NewObj, const Matrix3fT* m1)
     {
-        assert(NewObj && m1);
-
         NewObj->s.XX = m1->s.XX; NewObj->s.YX = m1->s.YX; NewObj->s.ZX = m1->s.ZX;
         NewObj->s.XY = m1->s.XY; NewObj->s.YY = m1->s.YY; NewObj->s.ZY = m1->s.ZY;
         NewObj->s.XZ = m1->s.XZ; NewObj->s.YZ = m1->s.YZ; NewObj->s.ZZ = m1->s.ZZ;
@@ -435,8 +404,6 @@ typedef struct ArcBall_t
     inline
     static void Matrix4fMulRotationScale(Matrix4fT* NewObj, GLfloat scale)
     {
-        assert(NewObj);
-
         NewObj->s.XX *= scale; NewObj->s.YX *= scale; NewObj->s.ZX *= scale;
         NewObj->s.XY *= scale; NewObj->s.YY *= scale; NewObj->s.ZY *= scale;
         NewObj->s.XZ *= scale; NewObj->s.YZ *= scale; NewObj->s.ZZ *= scale;
@@ -457,25 +424,21 @@ typedef struct ArcBall_t
     {
         GLfloat scale;
 
-        assert(NewObj && m1);
-
         scale = Matrix4fSVD(NewObj, NULL, NULL);
 
         Matrix4fSetRotationScaleFromMatrix3f(NewObj, m1);
         Matrix4fMulRotationScale(NewObj, scale);
     }
-/*
 void    ArcBallSetBounds(GLfloat NewWidth, GLfloat NewHeight, ArcBall *arcball);
 
-void ArcBallMapToSphere(const Point2fT* NewPt, Vector3fT* NewVec, ArcBall *arcball);
+void 	ArcBallMapToSphere(const Point2fT* NewPt, Vector3fT* NewVec, ArcBall *arcball);
 
-void ArcBallInit(GLfloat NewWidth, GLfloat NewHeight, ArcBall *arcball);
+void ArcBallInit(unsigned int width,unsigned int height, ArcBall *arcball);
 
 //Mouse down
 void    ArcBallClick(const Point2fT* NewPt, ArcBall *arcball);
 
 //Mouse drag, calculate rotation
 void    ArcBallDrag(const Point2fT* NewPt, Quat4fT* NewRot, ArcBall *arcball);
-*/
 #endif
 

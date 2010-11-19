@@ -1,15 +1,37 @@
-#include "arcball.h"
-void    ArcBallSetBounds(GLfloat NewWidth, GLfloat NewHeight, ArcBall *arcball)
-{
-    assert((NewWidth > 1.0f) && (NewHeight > 1.0f));
+/** KempoApi: The Turloc Toolkit *****************************/
+/** *    *                                                  **/
+/** **  **  Filename: ArcBall.c                             **/
+/**   **    Version:  Common                                **/
+/**   **                                                    **/
+/**                                                         **/
+/**  Arcball class for mouse manipulation.                  **/
+/**                                                         **/
+/**                                                         **/
+/**                                                         **/
+/**                                                         **/
+/**                              (C) 1999-2003 Tatewake.com **/
+/**   History:                                              **/
+/**   08/17/2003 - (TJG) - Creation                         **/
+/**   09/23/2003 - (TJG) - Bug fix and optimization         **/
+/**   09/25/2003 - (TJG) - Version for NeHe Basecode users  **/
+/**   11/18/2010 - (LH)  - Revised to C for topome          **/
+/*************************************************************/
 
+#include "arcball.h"
+#include <GL/gl.h>
+
+void
+ArcBallSetBounds(GLfloat NewWidth, GLfloat NewHeight, ArcBall *arcball)
+{
     //Set adjustment factor for width/height
     arcball->AdjustWidth  = 1.0f / ((NewWidth  - 1.0f) * 0.5f);
     arcball->AdjustHeight = 1.0f / ((NewHeight - 1.0f) * 0.5f);
 }
 
 
-void ArcBallMapToSphere(const Point2fT* NewPt, Vector3fT* NewVec, ArcBall *arcball) 
+
+void
+ArcBallMapToSphere(const Point2fT* NewPt, Vector3fT* NewVec, ArcBall *arcball) 
 {
     Point2fT TempPt;
     GLfloat length;
@@ -46,7 +68,7 @@ void ArcBallMapToSphere(const Point2fT* NewPt, Vector3fT* NewVec, ArcBall *arcba
     }
 }
 
-ArcBallInit(unsigned int width,unsigned int height, ArcBall *arcball)
+void ArcBallInit(unsigned int width,unsigned int height, ArcBall *arcball)
 {
     //Clear initial values
    	GLfloat NewWidth = (GLfloat) width;

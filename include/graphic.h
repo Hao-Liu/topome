@@ -1,11 +1,15 @@
-#include "molecule.h"
-#include <stdlib.h>
+#ifndef _tpm_graphic_h
+#define _tpm_graphic_h
+
+#include <sys/time.h>
 #include <GL/glx.h>
-#include <GL/gl.h>
 #include <GL/glu.h>
 #include <X11/extensions/xf86vmode.h>
-#include <X11/keysym.h>
-#include <arcball.h>
+#include "molecule.h"
+
+#include "system.h"
+#include "arcball.h"
+
 /* stuff about our window grouped together */
 typedef struct {
     Display *dpy;
@@ -29,30 +33,13 @@ typedef struct {
 		struct timeval lastTickCount;				// Tick Counter
 } GLWindow;
 
-/* attributes for a single buffered visual in RGBA format with at least
- * 4 bits per color and a 16 bit depth buffer */
-static int attrListSgl[] = {GLX_RGBA, GLX_RED_SIZE, 4, 
-    GLX_GREEN_SIZE, 4, 
-    GLX_BLUE_SIZE, 4, 
-    GLX_DEPTH_SIZE, 16,
-    None};
 
-/* attributes for a double buffered visual in RGBA format with at least 
- * 4 bits per color and a 16 bit depth buffer */
-static int attrListDbl[] = { GLX_RGBA, GLX_DOUBLEBUFFER, 
-    GLX_RED_SIZE, 4, 
-    GLX_GREEN_SIZE, 4, 
-    GLX_BLUE_SIZE, 4, 
-    GLX_DEPTH_SIZE, 16,
-    None };
-
-GLWindow GLWin;
 //GLfloat rotTri, rotQuad;
 
 void resizeGLScene(unsigned int width, unsigned int height);
-int initGL(void);
-GLvoid killGLWindow(void);
+int initGL(GLWindow *GLWin);
+GLvoid killGLWindow(GLWindow *GLWin);
 Bool createGLWindow(char* title, int width, int height, int bits, 
-										Bool fullscreenflag);
-int RenderMolecules(SYSTEM *system);
-
+										Bool fullscreenflag, GLWindow *GLWin);
+void GraphicOutput(System *system, GLWindow *GLWin);
+#endif //_tpm_graphic_h
