@@ -114,8 +114,7 @@ parse_option (char **input_file, int *graphic_enabled,
       {0, 0, 0, 0}
     };
 
-    c = getopt_long(argc, argv, "gv",
-          long_options, &option_index);
+    c = getopt_long(argc, argv, "gv", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -502,7 +501,8 @@ void
 parse_input_file (FILE *fp, System *tpm_system)
 {
   tpm_system->verbose_interval = 100;
-  tpm_system->graphic_interval = 10;
+  tpm_system->graphic_interval = 1;
+  tpm_system->time_interval = 0.5;
   tpm_system->relax_ratio      = 0.999;
   tpm_system->expansion_ratio  = 5.0;
   

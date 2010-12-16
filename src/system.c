@@ -32,7 +32,7 @@
 #include <libintl.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "molecule.h"
+#include "force.h"
 #include "system.h"
 #include "graphic.h"
 #include "parse.h"
@@ -251,6 +251,36 @@ init_system (System *tpm_system, char *input_file)
 	create_molecule (tpm_system);
 }
 
+void	
+update_system (int relax, System *tpm_system)
+{
+	integrate (relax, tpm_system);
+	create_grid_list (tpm_system);
+	calculate_force (tpm_system);
+	release_grid_list (tpm_system);
+	calculate_kinetic_energy (tpm_system);
+}
+
+
+
+void
+reset_velosity(System *tpm_system)
+{
+	int i,j;
+	for(i=0; i<tpm_system->number_molecule; i++)
+	{
+	  MOLECULE *mol = tpm_system->molecule+i;
+		for(j=0; j<mol->nAtoms; j++)
+		{
+		  ATOM *atom = mol->atoms+j;
+			atom->oldx=atom->x;
+			atom->oldy=atom->y;
+			atom->oldz=atom->z;
+		}
+	}
+}
+
+
 void 
 relax_system (System *tpm_system)
 {
@@ -259,11 +289,7 @@ relax_system (System *tpm_system)
        tpm_system->dimension *= tpm_system->relax_ratio)
   {
     tpm_system->half_dimension = tpm_system->dimension*0.5;
-    
-	  integrate_relaxation (tpm_system);
-	  create_grid_list (tpm_system);
-	  calculate_force (tpm_system);
-	  release_grid_list (tpm_system);
+    update_system (1, tpm_system);
   }
   tpm_system->half_dimension = tpm_system->dimension*0.5;
   reset_velosity (tpm_system);
@@ -273,10 +299,11 @@ void
 run_system (System *tpm_system, int verbose_enabled, int graphic_enabled, 
             GLWindow *gl_window)
 {
+  fprintf (stdout, gettext ("Running...\n"));
   for (tpm_system->step=0; tpm_system->step<tpm_system->number_step; 
        tpm_system->step++)
   {
-    update_system (tpm_system);
+    update_system (0, tpm_system);
     if(verbose_enabled && 
        (tpm_system->step%tpm_system->verbose_interval == 0))
     {
@@ -317,3 +344,4 @@ release_system (System *tpm_system)
 	free (tpm_system->molecule);
 	tpm_system->molecule = NULL;
 }
+

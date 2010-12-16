@@ -1,5 +1,5 @@
-#ifndef _tpm_molecule_h
-#define _tpm_molecule_h
+#ifndef _tpm_force_h
+#define _tpm_force_h
 
 #include "system.h"
 
