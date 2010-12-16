@@ -112,6 +112,7 @@ typedef struct
 	int number_step;
 	int verbose_interval;
 	int graphic_interval;
+	double time_interval;
 	double dimension;
 	double half_dimension;
 	double relaxed_dimension;

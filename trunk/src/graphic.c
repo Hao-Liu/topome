@@ -1,7 +1,7 @@
 //#include <stdlib.h>
 #include <GL/gl.h>
 #include "system.h"
-#include "molecule.h"
+#include "force.h"
 #include "graphic.h"
 
 float AtomColor[][3]=
