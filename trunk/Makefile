@@ -62,7 +62,7 @@ $(OUT): $(OBJ_FILES)
 	@$(CC) $(FLAG_LINK) $(addprefix $(OBJ_DIR),$(notdir $^)) $(LIB) -o $@ -Wall -Wconversion  -Wundef -Wshadow
 %.o:%.c %.d
 	@echo  "building: $(notdir $@) \t\t\t please wait ..."
-	@$(CC) $(FLAG_COMPLE) $< $(INCLUDE) -o $(OBJ_DIR)$@ -Wall -Wconversion  -Wundef -Wshadow
+	@$(CC) $(FLAG_COMPLE) $< $(INCLUDE) -o $(OBJ_DIR)$@ -Wall  -Wundef -Wshadow
 $(OBJ_DIR)%.d:%.c
 	@echo  "building: $(notdir $@) \t\t\t please wait ..."
 	@$(CC) $< $(INCLUDE) -MM -MD -o $@ -Wall -Wconversion  -Wundef -Wshadow
