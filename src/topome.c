@@ -32,6 +32,8 @@
 #include "verbose.h"
 #include "graphic.h"
 #include "parse.h"
+#include "forcefield.h"
+
 
 int 
 main (int argc, char **argv)
@@ -50,7 +52,10 @@ main (int argc, char **argv)
   // parse input options
   parse_option (&input_file, &graphic_enabled, &verbose_enabled,
                       argc, argv);
-
+  
+  ForceField forcefield;
+  memset (&forcefield, 0, sizeof(ForceField));
+  init_forcefield ("frc/cvff.frc", &forcefield);
   // initialize system
   init_system (&system, input_file);
 
