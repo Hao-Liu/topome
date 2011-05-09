@@ -6,7 +6,7 @@ void
 init_system (System *tpm_system, char *input_file);
 
 void 
-relax_system(System *tpm_system);
+relax_system(System *tpm_system, int graphic_enabled, GLWindow *gl_window);
 
 void
 release_system (System *tpm_system);

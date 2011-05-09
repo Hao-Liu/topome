@@ -59,14 +59,14 @@ main (int argc, char **argv)
   // initialize system
   init_system (&system, input_file);
 
-  // relax to min energy mode
-	relax_system (&system);
-
   // init graphic Xwindow if graphic mode is on
   if (graphic_enabled)
   {
     init_graphic (&system, &gl_window);
   }
+
+  // relax to min energy mode
+	relax_system (&system, graphic_enabled, &gl_window);
 
   // iterate simulation
   run_system (&system, verbose_enabled, graphic_enabled, &gl_window);
