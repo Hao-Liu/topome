@@ -1,4 +1,4 @@
-#include "forcefield.h"
+#include "types.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
