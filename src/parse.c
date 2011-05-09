@@ -582,7 +582,7 @@ get_angle (MOLECULETYPE *mol_type)
   for (i=0; i<mol_type->molecule.nBonds; i++)
   {
     BOND *bond1 = mol_type->molecule.bonds + i;
-    for (j=i; j<mol_type->molecule.nBonds; j++)
+    for (j=i+1; j<mol_type->molecule.nBonds; j++)
     {
       BOND *bond2 = mol_type->molecule.bonds + j;
       int atom[4];
@@ -590,11 +590,11 @@ get_angle (MOLECULETYPE *mol_type)
       atom[1] = bond1->idxAtom2;
       atom[2] = bond2->idxAtom1;
       atom[3] = bond2->idxAtom2;
-      for (k=0; k<1; k++)
+      for (k=0; k<=1; k++)
       {
-        for (l=2; l<3; l++)
+        for (l=2; l<=3; l++)
         {
-          if (atom[k]==atom[l] && atom[(-(2*k-1)+1)/2]!=atom[(-(2*l-5)+5)/2])
+          if (atom[k]==atom[l] && atom[1-k]!=atom[5-l])
           {
             mol_type->molecule.nAngles++;
             mol_type->molecule.angles = realloc (mol_type->molecule.angles, 
@@ -603,13 +603,8 @@ get_angle (MOLECULETYPE *mol_type)
             ANGLE *angle = mol_type->molecule.angles + 
                            mol_type->molecule.nAngles - 1;
             angle->idxAtom2 = atom[k];
-            int b = 8 - k - l;        // b = x + y = 10 - (k+1) - (l+1)
-            int c = 24/(k+1)/(l+1);   // c = x * y
-            int t = sqrt(b*b - 4*c);  // 
-            int x = (b - t)/2 - 1;    // x^2 -bx + c == 0
-            int y = (b + t)/2 - 1;
-            angle->idxAtom1 = atom[x];
-            angle->idxAtom3 = atom[y];
+            angle->idxAtom1 = atom[1-k];
+            angle->idxAtom3 = atom[5-l];
             angle->atom1    = mol_type->molecule.atoms + angle->idxAtom1;
             angle->atom2    = mol_type->molecule.atoms + angle->idxAtom2;
             angle->atom3    = mol_type->molecule.atoms + angle->idxAtom3;
@@ -682,12 +677,12 @@ is_in_improper (MOLECULETYPE *mol_type, int a, int b, int c, int d)
   int i,j,k;
   int sorted[4];
   sorted[0]=a;
-  sorted[1]=b;
-  sorted[2]=c;
-  sorted[3]=d;
-  for (i=0; i<4; i++)
+  sorted[1]=c;
+  sorted[2]=d;
+  sorted[3]=b;  //central atom
+  for (i=0; i<2; i++)
   {
-    for (j=i; j<4; j++)
+    for (j=i+1; j<3; j++)
     {
       if (sorted[i] > sorted[j])
       {
@@ -696,27 +691,27 @@ is_in_improper (MOLECULETYPE *mol_type, int a, int b, int c, int d)
         sorted[j] = t;
       }
     }
-  }
-  
+  } 
+
   for (i=0; i<mol_type->molecule.nImpropers; i++)
   {
     IMPROPER *improper = mol_type->molecule.impropers + i;
 
     int sorted_ref[4];
     sorted_ref[0] = improper->idxAtom1;
-    sorted_ref[1] = improper->idxAtom2;
-    sorted_ref[2] = improper->idxAtom3;
-    sorted_ref[3] = improper->idxAtom4;
+    sorted_ref[1] = improper->idxAtom3;
+    sorted_ref[2] = improper->idxAtom4;
+    sorted_ref[3] = improper->idxAtom2; //central atom
 
-    for (j=0; j<4; j++)
+    for (j=0; j<2; j++)
     {
-      for (k=j; k<4; k++)
+      for (k=j+1; k<3; k++)
       {
         if (sorted_ref[j] > sorted_ref[k])
         {
           int t = sorted_ref[j];
-          sorted[j] = sorted[k];
-          sorted[j] = t;
+          sorted_ref[j] = sorted_ref[k];
+          sorted_ref[k] = t;
         }
       }
     }
@@ -738,28 +733,41 @@ is_improper_in_forcefield ()  //TODO
 {
 	return 1;
 }
+
 int
 is_in_dihedral (MOLECULETYPE *mol_type, int a, int b, int c, int d)
 {
-  int i,j,k;
+  int i;
   int sorted[4];
   sorted[0]=a;
   sorted[1]=b;
   sorted[2]=c;
   sorted[3]=d;
-  for (i=0; i<4; i++)
-  {
-    for (j=i; j<4; j++)
-    {
-      if (sorted[i] > sorted[j])
-      {
-        int t = sorted[i];
-        sorted[i] = sorted[j];
-        sorted[j] = t;
-      }
-    }
-  }
-  
+
+	if ( sorted[0] > sorted[3])
+	{
+		int t = sorted[0];
+		sorted[0] = sorted[3];
+		sorted[3] = t;
+		
+		t = sorted[1];
+		sorted[1] = sorted[2];
+		sorted[2] = t;
+	}
+	else if ( sorted[0] == sorted[3] )
+	{
+		if ( sorted[1] > sorted[2])
+		{
+			int t = sorted[0];
+			sorted[0] = sorted[3];
+			sorted[3] = t;
+			
+			t = sorted[1];
+			sorted[1] = sorted[2];
+			sorted[2] = t;
+		}
+	}
+
   for (i=0; i<mol_type->molecule.nDihedrals; i++)
   {
     DIHEDRAL *dihedral = mol_type->molecule.dihedrals + i;
@@ -770,18 +778,29 @@ is_in_dihedral (MOLECULETYPE *mol_type, int a, int b, int c, int d)
     sorted_ref[2] = dihedral->idxAtom3;
     sorted_ref[3] = dihedral->idxAtom4;
 
-    for (j=0; j<4; j++)
-    {
-      for (k=j; k<4; k++)
-      {
-        if (sorted_ref[j] > sorted_ref[k])
-        {
-          int t = sorted_ref[j];
-          sorted[j] = sorted[k];
-          sorted[j] = t;
-        }
-      }
-    }
+		if ( sorted_ref[0] > sorted_ref[3])
+		{
+			int t = sorted_ref[0];
+			sorted_ref[0] = sorted_ref[3];
+			sorted_ref[3] = t;
+			
+			t = sorted_ref[1];
+			sorted_ref[1] = sorted_ref[2];
+			sorted_ref[2] = t;
+		}
+		else if ( sorted_ref[0] == sorted_ref[3] )
+		{
+			if ( sorted_ref[1] > sorted_ref[2])
+			{
+				int t = sorted_ref[0];
+				sorted_ref[0] = sorted_ref[3];
+				sorted_ref[3] = t;
+				
+				t = sorted_ref[1];
+				sorted_ref[1] = sorted_ref[2];
+				sorted_ref[2] = t;
+			}
+		}
 
     if (sorted[0] == sorted_ref[0] && 
         sorted[1] == sorted_ref[1] && 
@@ -800,6 +819,7 @@ is_dihedral_in_forcefield ()  //TODO
 {
 	return 1;
 }
+
 void
 get_dihedral_and_improper (MOLECULETYPE *mol_type)
 {
@@ -807,7 +827,7 @@ get_dihedral_and_improper (MOLECULETYPE *mol_type)
   for (i=0; i<mol_type->molecule.nAngles; i++)
   {
     ANGLE *angle1 = mol_type->molecule.angles + i;
-    for (j=i; j<mol_type->molecule.nAngles; j++)
+    for (j=i+1; j<mol_type->molecule.nAngles; j++)
     {
       ANGLE *angle2 = mol_type->molecule.angles + j;
       int atom[2][3];
@@ -823,11 +843,11 @@ get_dihedral_and_improper (MOLECULETYPE *mol_type)
         {
           for (l=0; l<3; l+=2)      
           {
-            if (atom[0][k]==atom[1][l] && atom[0][2-k]!=atom[0][2-l])  // share edge : improper
+            if (atom[0][k]==atom[1][l] && atom[0][2-k]!=atom[1][2-l])  // share edge : improper
             {
               int a = 2 - k;  // unshared atom in angle1
               int b = 2 - l;  // unshared atom in angle2
-              if (!is_in_improper (mol_type, atom[0][1], atom[0][k], atom[0][a], atom[1][b]))
+              if (!is_in_improper (mol_type, atom[0][k], atom[0][1], atom[0][a], atom[1][b]))
               {
                 if (is_improper_in_forcefield())
                 {
@@ -849,52 +869,90 @@ get_dihedral_and_improper (MOLECULETYPE *mol_type)
       }
       else
       {
-				if ( (atom[0][1] == atom[1][0] && atom[1][1] == atom[0][0])) // share an edge: dihedral situation A
+				for ( k=0; k<=2; k+=2)
 				{
-					int a = 2;  // unshared atom in angle1
-					int b = 2;  // unshared atom in angle2
-					if (!is_in_dihedral (mol_type, atom[0][1], atom[0][0], atom[0][a], atom[1][b]))
+					for ( l=0; l<=2; l+=2)
 					{
-						if (is_dihedral_in_forcefield())
+						// share an edge: dihedral
+						if ( (atom[0][1] == atom[1][k]) && (atom[1][1] == atom[0][l]) ) 
 						{
-							mol_type->molecule.nDihedrals++;
-							mol_type->molecule.dihedrals = realloc (mol_type->molecule.dihedrals, 
-																									 mol_type->molecule.nDihedrals
-																									 * sizeof (DIHEDRAL));
-							DIHEDRAL *dihedral = mol_type->molecule.dihedrals + 
-														 mol_type->molecule.nDihedrals - 1;
-							dihedral->idxAtom2 = atom[0][1];
-							dihedral->idxAtom1 = atom[0][0];
-							dihedral->idxAtom3 = atom[0][a];
-							dihedral->idxAtom4 = atom[1][b];
-						}
-					}
-				}
-				else
-				if ( (atom[0][1] == atom[1][2] && atom[1][1] == atom[0][2])) // share an edge: dihedral situation B
-				{
-					int a = 0;  // unshared atom in angle1
-					int b = 0;  // unshared atom in angle2
-					if (!is_in_dihedral (mol_type, atom[0][1], atom[0][2], atom[0][a], atom[1][b]))
-					{
-						if (is_dihedral_in_forcefield())
-						{
-							mol_type->molecule.nDihedrals++;
-							mol_type->molecule.dihedrals = realloc (mol_type->molecule.dihedrals, 
-																									 mol_type->molecule.nDihedrals
-																									 * sizeof (DIHEDRAL));
-							DIHEDRAL *dihedral = mol_type->molecule.dihedrals + 
-														 mol_type->molecule.nDihedrals - 1;
-							dihedral->idxAtom2 = atom[0][1];
-							dihedral->idxAtom1 = atom[0][2];
-							dihedral->idxAtom3 = atom[0][a];
-							dihedral->idxAtom4 = atom[1][b];
+							int a = 2 - l; // unshared atom in angle1
+							int b = 2 - k; // unshared atom in angle2
+							
+							if (!is_in_dihedral (mol_type, atom[0][a], atom[0][1], 
+																						 atom[1][1], atom[1][b]))
+							{
+								if (is_dihedral_in_forcefield())
+								{
+									mol_type->molecule.nDihedrals++;
+									mol_type->molecule.dihedrals = realloc (mol_type->molecule.dihedrals, 
+																											 mol_type->molecule.nDihedrals
+																											 * sizeof (DIHEDRAL));
+									DIHEDRAL *dihedral = mol_type->molecule.dihedrals + 
+																 mol_type->molecule.nDihedrals - 1;
+									dihedral->idxAtom1 = atom[0][a];
+									dihedral->idxAtom2 = atom[0][1];
+									dihedral->idxAtom3 = atom[1][1];
+									dihedral->idxAtom4 = atom[1][b];
+								}
+							}
 						}
 					}
 				}
       }
     }
   }
+}
+
+//compare non-apex atom symbols of two impropers 
+int 
+compare_improper (char *a, char* b, char* c, char* x, char* y, char* z)
+{
+  int i,j;
+  char* sorted_1[4];
+  sorted_1[0]=a;
+  sorted_1[1]=b;
+  sorted_1[2]=c;
+  for (i=0; i<3; i++)
+  {
+    for (j=i; j<3; j++)
+    {
+      if ( strcmp( sorted_1[i], sorted_1[j]) > 0)
+      {
+        char* t = sorted_1[i];
+        sorted_1[i] = sorted_1[j];
+        sorted_1[j] = t;
+      }
+    }
+  }
+
+  char* sorted_2[4];
+  sorted_2[0]=a;
+  sorted_2[1]=b;
+  sorted_2[2]=c;
+  for (i=0; i<3; i++)
+  {
+    for (j=i; j<3; j++)
+    {
+      if ( strcmp( sorted_2[i], sorted_2[j]) > 0)
+      {
+        char* t = sorted_2[i];
+        sorted_2[i] = sorted_2[j];
+        sorted_2[j] = t;
+      }
+    }
+  }
+	
+	if (  !strcmp(sorted_1[0], sorted_2[0]) &&
+				!strcmp(sorted_1[1], sorted_2[1]) &&
+				!strcmp(sorted_1[2], sorted_2[2]))
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 void
@@ -916,11 +974,15 @@ parse_input_dihedral_and_improper_auto (FILE *fp, MOLECULETYPE *mol_type, System
       dihedral->atom2 = mol_type->molecule.atoms + dihedral->idxAtom2;
       dihedral->atom3 = mol_type->molecule.atoms + dihedral->idxAtom3;
       dihedral->atom4 = mol_type->molecule.atoms + dihedral->idxAtom4;
-      if ( ((!strcmp(dihedral->atom1->symbol_torsion, t1->i) 
-            && !strcmp(dihedral->atom3->symbol_torsion, t1->k)) ||
-           (!strcmp(dihedral->atom1->symbol_torsion, t1->k) 
-            && !strcmp(dihedral->atom3->symbol_torsion, t1->i))) &&
-           !strcmp(dihedral->atom2->symbol_torsion, t1->j))
+
+			if (((!strcmp(dihedral->atom1->symbol_torsion, t1->i) || !strcmp(t1->i, "*")) &&
+			     (!strcmp(dihedral->atom2->symbol_torsion, t1->j) || !strcmp(t1->j, "*")) &&
+			     (!strcmp(dihedral->atom3->symbol_torsion, t1->k) || !strcmp(t1->k, "*")) &&
+			     (!strcmp(dihedral->atom4->symbol_torsion, t1->l) || !strcmp(t1->l, "*")))||
+			    ((!strcmp(dihedral->atom4->symbol_torsion, t1->i) || !strcmp(t1->i, "*")) &&
+			     (!strcmp(dihedral->atom3->symbol_torsion, t1->j) || !strcmp(t1->j, "*")) &&
+			     (!strcmp(dihedral->atom2->symbol_torsion, t1->k) || !strcmp(t1->k, "*")) &&
+			     (!strcmp(dihedral->atom1->symbol_torsion, t1->l) || !strcmp(t1->l, "*"))))
       {
         dihedral->kphi = t1->kphi;
         dihedral->n = t1->n;
@@ -941,16 +1003,18 @@ parse_input_dihedral_and_improper_auto (FILE *fp, MOLECULETYPE *mol_type, System
       improper->atom2 = mol_type->molecule.atoms + improper->idxAtom2;
       improper->atom3 = mol_type->molecule.atoms + improper->idxAtom3;
       improper->atom4 = mol_type->molecule.atoms + improper->idxAtom4;
-      if ( ((!strcmp(improper->atom1->symbol_out_of_plane, o1->i) 
-            && !strcmp(improper->atom3->symbol_out_of_plane, o1->k)) ||
-           (!strcmp(improper->atom1->symbol_out_of_plane, o1->k) 
-            && !strcmp(improper->atom3->symbol_out_of_plane, o1->i))) &&
-           !strcmp(improper->atom2->symbol_out_of_plane, o1->j))
-      {
-        improper->kchi = o1->kchi;
-        improper->n = o1->n;
-        improper->chi0 = o1->chi0;
-      }
+			if (!strcmp(improper->atom2->symbol_out_of_plane, o1->j))
+			{
+				if (compare_improper ( improper->atom1->symbol_out_of_plane,
+															 improper->atom3->symbol_out_of_plane,
+															 improper->atom4->symbol_out_of_plane,
+															 o1->i, o1->k, o1->l))
+				{
+					improper->kchi = o1->kchi;
+					improper->n = o1->n;
+					improper->chi0 = o1->chi0;
+				}
+			}
     }
   }
 

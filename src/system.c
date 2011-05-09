@@ -295,14 +295,21 @@ reset_velosity(System *tpm_system)
 
 
 void 
-relax_system (System *tpm_system)
+relax_system (System *tpm_system, int graphic_enabled, GLWindow *gl_window)
 {
   fprintf (stdout, gettext ("Relaxing...\n"));
+
+	int i = 0;
   for (; tpm_system->dimension > tpm_system->relaxed_dimension;
        tpm_system->dimension *= tpm_system->relax_ratio)
   {
     tpm_system->half_dimension = tpm_system->dimension*0.5;
     update_system (1, tpm_system);
+		
+		if(graphic_enabled && (i % tpm_system->graphic_interval == 0))
+		{
+			graphic_output (tpm_system, gl_window);
+		}
   }
   tpm_system->half_dimension = tpm_system->dimension*0.5;
   reset_velosity (tpm_system);
