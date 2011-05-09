@@ -80,6 +80,8 @@ init_atom (int *mol_index, MOLECULETYPE *mol_type, MOLECULE *mol,
     atom->mass = atom_type->mass ; 
     atom->type = atom_type->type ; 
     atom->charge = atom_type->charge ; 
+		atom->nonbond_a = atom_type->nonbond_a ;
+		atom->nonbond_b = atom_type->nonbond_b ;
   }
 }
 
@@ -101,6 +103,9 @@ init_bond (MOLECULETYPE *mol_type, MOLECULE *mol,
 	  bond->type = bond_type->type ;
 	  bond->idxAtom1 = bond_type->idxAtom1 ;
 	  bond->idxAtom2 = bond_type->idxAtom2 ;
+		bond->r0 = bond_type->r0 ;
+		bond->k2 = bond_type->k2 ;
+		bond->bondType = bond_type->bondType ;
 	  bond->atom1 = (mol->atoms + bond_type->idxAtom1) ;
 	  bond->atom2 = (mol->atoms + bond_type->idxAtom2) ;
   }
@@ -121,6 +126,8 @@ init_angle (MOLECULETYPE *mol_type, MOLECULE *mol,
     angle_type = mol_type->molecule.angles+i;
     
 	  angle->type = angle_type->type ;
+	  angle->theta0 = angle_type->theta0 ;
+	  angle->k2 = angle_type->k2 ;
 	  angle->idxAtom1 = angle_type->idxAtom1 ;
 	  angle->idxAtom2 = angle_type->idxAtom2 ;
 	  angle->idxAtom3 = angle_type->idxAtom3 ;
@@ -145,6 +152,9 @@ init_dihedral (MOLECULETYPE *mol_type, MOLECULE *mol,
     dihedral_type = mol_type->molecule.dihedrals+i;
     
 	  dihedral->type = dihedral_type->type ;
+	  dihedral->kphi = dihedral_type->kphi ;
+	  dihedral->n = dihedral_type->n ;
+	  dihedral->phi0 = dihedral_type->phi0 ;
 	  dihedral->idxAtom1 = dihedral_type->idxAtom1 ;
 	  dihedral->idxAtom2 = dihedral_type->idxAtom2 ;
 	  dihedral->idxAtom3 = dihedral_type->idxAtom3 ;
@@ -171,6 +181,9 @@ init_improper (MOLECULETYPE *mol_type, MOLECULE *mol,
     improper_type = mol_type->molecule.impropers+i;
     
 	  improper->type = improper_type->type ;
+	  improper->kchi = improper_type->kchi ;
+	  improper->n = improper_type->n ;
+	  improper->chi0 = improper_type->chi0 ;
 	  improper->idxAtom1 = improper_type->idxAtom1 ;
 	  improper->idxAtom2 = improper_type->idxAtom2 ;
 	  improper->idxAtom3 = improper_type->idxAtom3 ;

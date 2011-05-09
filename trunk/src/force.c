@@ -31,9 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "force.h"
-#include "system.h"
-
+#include "types.h"
 void 
 get_minimun_image (double *dx, double *dy, double *dz, System *tpm_system)
 {
@@ -86,9 +84,16 @@ calculate_bond_force (System *tpm_system)
 		  BOND *bond = (tpm_system->molecule+i)->bonds+j;
 		  ATOM *atom1 = bond->atom1;
 		  ATOM *atom2 = bond->atom2;
-		  
+/*
+// Used when manually input forcefield
 			K  =  (tpm_system->bond_type+bond->type)->K;
 			r0 =  (tpm_system->bond_type+bond->type)->r0;
+*/
+
+// Used When automatic generate forcefield 
+			K  =  bond->k2;
+			r0 =  bond->r0;
+
 			dx =  atom1->x - atom2->x;
 			dy =  atom1->y - atom2->y;
 			dz =  atom1->z - atom2->z;
@@ -125,9 +130,17 @@ calculate_angle_force (System *tpm_system)
 		for (j=0; j<mol->nAngles; j++)
 		{
 		  ANGLE *angle = mol->angles + j;
+/*
+//Manual
 			K =       (tpm_system->angle_type+angle->type)->K;
 			// /180.0*3.14159265357989
 			theta0 =  (tpm_system->angle_type+angle->type)->theta0 * 1.745329252e-2;
+*/
+
+//Automatic
+			K =       angle->k2;
+			// /180.0*3.14159265357989
+			theta0 =  angle->theta0 * 1.745329252e-2;
 
 			dx1 =  angle->atom1->x - angle->atom2->x;
 			dy1 =  angle->atom1->y - angle->atom2->y;

@@ -312,6 +312,93 @@ parse_input_atom_detail (FILE *fp, ATOM *atom, System *tpm_system)
 }
 
 void
+parse_input_atom_detail_auto (FILE *fp, ATOM *atom, System *tpm_system)
+{
+  int i;
+  char buffer[200];
+
+  const char atom_type[ATOM_TYPE_MAX][4]=
+  {
+    "L",
+    "H","He",
+    "Li","Be","B","C","N","O","F","Ne",
+    "Na","Mg","Al","Si","P","S","Cl","Ar",
+    "K","Ca",
+    "Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn",
+    "Ga","Ge","As","Se","Br","Kr",
+    "Rb","Sr",
+    "Y","Zr","Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd",
+    "In","Sn","Sb","Te","I","Xe",
+    "Cs","Ba",
+    "La","Ce","Pr","Nd","Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb","Lu",
+    "Hf","Ta","W","Re","Os","Ir","Pt","Au","Hg",
+    "Tl","Pb","Bi","Po","At","Rn",
+    "Fr","Ra",
+    "Ac","Th","Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm","Md","No",
+    "Lr","Rf","Db","Sg","Bh","Hs","Mt","Ds","Rg","Cn",
+    "Uut","Uuq","Uup","Uuh","Uus","Uuo"    
+  };
+
+
+  fgets (buffer, 200, fp);
+  sscanf (buffer, "%lf %lf %lf %s %lf", 
+          &(atom->x),
+          &(atom->y),
+          &(atom->z),
+          atom->symbol_md,
+          &(atom->charge));
+  for (i=0; i<tpm_system->forcefield.num_atom_type; i++)
+  {
+    AtomType *at = tpm_system->forcefield.atom_type+i; 
+    if (!strcmp (atom->symbol_md, at->type))
+    {
+      atom->mass = at->mass;
+      strcpy (atom->symbol, at->element);
+    }
+  } 
+  
+  for (i=0; i<tpm_system->forcefield.num_equivalence; i++)
+  {
+    Equivalence *eq = tpm_system->forcefield.equivalence+i; 
+    if (!strcmp (atom->symbol_md, eq->type))
+    {
+      strcpy (atom->symbol_nonbond, eq->nonbond);
+      strcpy (atom->symbol_bond, eq->bond);
+      strcpy (atom->symbol_angle, eq->angle);
+      strcpy (atom->symbol_torsion, eq->torsion);
+      strcpy (atom->symbol_out_of_plane, eq->out_of_plane);
+    }
+  } 
+  
+  for (i=0; i<tpm_system->forcefield.num_nonbond_lj; i++)
+  {
+    NonbondLJ *nb = tpm_system->forcefield.nonbond_lj+i; 
+    if (!strcmp (atom->symbol_nonbond, nb->i))
+    {
+      atom->nonbond_a = nb->a;
+      atom->nonbond_b = nb->b;
+    }
+  } 
+  
+  for (i=0; i<ATOM_TYPE_MAX; i++)
+  {
+    if (!strcmp (atom->symbol, atom_type[i]))
+    {
+      atom->type = i;
+      break;
+    }
+  }
+  
+  atom->vx = 0.0;
+  atom->vy = 0.0;
+  atom->vz = 0.0;
+  atom->ax = 0.0;
+  atom->ay = 0.0;
+  atom->az = 0.0;
+
+}
+
+void
 parse_input_atom (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
 {
   int i;
@@ -327,6 +414,46 @@ parse_input_atom (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
     ATOM *atom = mol_type->molecule.atoms+i;
     
     parse_input_atom_detail (fp, atom, tpm_system);
+    
+    accumulated_center_of_gravity_x += atom->x * atom->mass;
+    accumulated_center_of_gravity_y += atom->y * atom->mass;
+    accumulated_center_of_gravity_z += atom->z * atom->mass;
+    accumulated_mass                += atom->mass;
+  }
+  double center_of_gravity_x = accumulated_center_of_gravity_x /
+                               accumulated_mass;
+  double center_of_gravity_y = accumulated_center_of_gravity_y /
+                               accumulated_mass;
+  double center_of_gravity_z = accumulated_center_of_gravity_z /
+                               accumulated_mass;
+
+  //Adjust Origin to Center of Gravity
+  for (i=0; i<mol_type->molecule.nAtoms; i++)
+  {
+    ATOM *atom = mol_type->molecule.atoms+i;
+
+    atom->x -= center_of_gravity_x;
+    atom->y -= center_of_gravity_y;
+    atom->z -= center_of_gravity_z;
+  }
+}
+
+void
+parse_input_atom_auto (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
+{
+  int i;
+  
+  //Initiate Atoms and Calculate Center of Gravity
+  double accumulated_center_of_gravity_x = 0.0;
+  double accumulated_center_of_gravity_y = 0.0;
+  double accumulated_center_of_gravity_z = 0.0;
+  double accumulated_mass                = 0.0;
+  
+  for (i=0; i<mol_type->molecule.nAtoms; i++)
+  {
+    ATOM *atom = mol_type->molecule.atoms+i;
+    
+    parse_input_atom_detail_auto (fp, atom, tpm_system);
     
     accumulated_center_of_gravity_x += atom->x * atom->mass;
     accumulated_center_of_gravity_y += atom->y * atom->mass;
@@ -373,6 +500,42 @@ parse_input_bond (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
 }
 
 void
+parse_input_bond_auto (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
+{
+  int i,j;
+  char buffer[200];
+  
+  //Initiate Bonds
+  for (i=0; i<mol_type->molecule.nBonds; i++)
+  {
+    BOND *bond = mol_type->molecule.bonds + i;
+    fgets (buffer, 200, fp);
+    sscanf (buffer, "%d %d %d", 
+            &(bond->idxAtom1),
+            &(bond->idxAtom2),
+            &(bond->bondType));
+    (bond->idxAtom1)--;
+    (bond->idxAtom2)--;
+    
+    for (j=0; j<tpm_system->forcefield.num_quadratic_bond; j++)
+    {
+      QuadraticBond *qb = tpm_system->forcefield.quadratic_bond+j;
+      bond->atom1 = mol_type->molecule.atoms + bond->idxAtom1;
+      bond->atom2 = mol_type->molecule.atoms + bond->idxAtom2;
+      if ( (!strcmp(bond->atom1->symbol_bond, qb->i) 
+            && !strcmp(bond->atom2->symbol_bond, qb->j)) ||
+           (!strcmp(bond->atom1->symbol_bond, qb->j) 
+            && !strcmp(bond->atom2->symbol_bond, qb->i)))
+      {
+        bond->r0 = qb->r0;
+        bond->k2 = qb->k2;
+      }
+    }
+  }
+
+}
+
+void
 parse_input_angle (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
 {
   int i;
@@ -392,6 +555,83 @@ parse_input_angle (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
     (angle->idxAtom2)--;
     (angle->idxAtom3)--;
   }
+}
+
+void
+get_angle (MOLECULETYPE *mol_type)
+{
+  int i, j, k, l;
+  for (i=0; i<mol_type->molecule.nBonds; i++)
+  {
+    BOND *bond1 = mol_type->molecule.bonds + i;
+    for (j=i; j<mol_type->molecule.nBonds; j++)
+    {
+      BOND *bond2 = mol_type->molecule.bonds + j;
+      int atom[4];
+      atom[0] = bond1->idxAtom1;
+      atom[1] = bond1->idxAtom2;
+      atom[2] = bond2->idxAtom1;
+      atom[3] = bond2->idxAtom2;
+      for (k=0; k<1; k++)
+      {
+        for (l=2; l<3; l++)
+        {
+          if (atom[k]==atom[l] && atom[(-(2*k-1)+1)/2]!=atom[(-(2*l-5)+5)/2])
+          {
+            mol_type->molecule.nAngles++;
+            mol_type->molecule.angles = realloc (mol_type->molecule.angles, 
+                                                 mol_type->molecule.nAngles
+                                                 * sizeof (ANGLE));
+            ANGLE *angle = mol_type->molecule.angles + 
+                           mol_type->molecule.nAngles - 1;
+            angle->idxAtom2 = atom[k];
+            int b = 8 - k - l;        // b = x + y = 10 - (k+1) - (l+1)
+            int c = 24/(k+1)/(l+1);   // c = x * y
+            int t = sqrt(b*b - 4*c);  // 
+            int x = (b - t)/2 - 1;    // x^2 -bx + c == 0
+            int y = (b + t)/2 - 1;
+            angle->idxAtom1 = atom[x];
+            angle->idxAtom3 = atom[y];
+            angle->atom1    = mol_type->molecule.atoms + angle->idxAtom1;
+            angle->atom2    = mol_type->molecule.atoms + angle->idxAtom2;
+            angle->atom3    = mol_type->molecule.atoms + angle->idxAtom3;
+          }
+        }
+      }
+    }
+  }
+}
+
+void
+parse_input_angle_auto (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
+{
+  int i,j;
+  
+  get_angle (mol_type);
+ 
+  //Initiate Angles
+  for (i=0; i<mol_type->molecule.nAngles; i++)
+  {
+    ANGLE *angle = mol_type->molecule.angles + i;
+    
+    for (j=0; j<tpm_system->forcefield.num_quadratic_angle; j++)
+    {
+      QuadraticAngle *qa = tpm_system->forcefield.quadratic_angle+j;
+      angle->atom1 = mol_type->molecule.atoms + angle->idxAtom1;
+      angle->atom2 = mol_type->molecule.atoms + angle->idxAtom2;
+      angle->atom3 = mol_type->molecule.atoms + angle->idxAtom3;
+      if ( ((!strcmp(angle->atom1->symbol_angle, qa->i) 
+            && !strcmp(angle->atom3->symbol_angle, qa->k)) ||
+           (!strcmp(angle->atom1->symbol_angle, qa->k) 
+            && !strcmp(angle->atom3->symbol_angle, qa->i))) &&
+           !strcmp(angle->atom2->symbol_angle, qa->j))
+      {
+        angle->theta0 = qa->theta0;
+        angle->k2 = qa->k2;
+      }
+    }
+  }
+
 }
 
 void
@@ -418,6 +658,285 @@ parse_input_dihedral (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
   }
 }
 
+int
+is_in_improper (MOLECULETYPE *mol_type, int a, int b, int c, int d)
+{
+  int i,j,k;
+  int sorted[4];
+  sorted[0]=a;
+  sorted[1]=b;
+  sorted[2]=c;
+  sorted[3]=d;
+  for (i=0; i<4; i++)
+  {
+    for (j=i; j<4; j++)
+    {
+      if (sorted[i] > sorted[j])
+      {
+        int t = sorted[i];
+        sorted[i] = sorted[j];
+        sorted[j] = t;
+      }
+    }
+  }
+  
+  for (i=0; i<mol_type->molecule.nImpropers; i++)
+  {
+    IMPROPER *improper = mol_type->molecule.impropers + i;
+
+    int sorted_ref[4];
+    sorted_ref[0] = improper->idxAtom1;
+    sorted_ref[1] = improper->idxAtom2;
+    sorted_ref[2] = improper->idxAtom3;
+    sorted_ref[3] = improper->idxAtom4;
+
+    for (j=0; j<4; j++)
+    {
+      for (k=j; k<4; k++)
+      {
+        if (sorted_ref[j] > sorted_ref[k])
+        {
+          int t = sorted_ref[j];
+          sorted[j] = sorted[k];
+          sorted[j] = t;
+        }
+      }
+    }
+
+    if (sorted[0] == sorted_ref[0] && 
+        sorted[1] == sorted_ref[1] && 
+        sorted[2] == sorted_ref[2] && 
+        sorted[3] == sorted_ref[3] )
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+//Check if requested improper angle exist in forcefield
+int
+is_improper_in_forcefield ()  //TODO
+{
+	return 1;
+}
+int
+is_in_dihedral (MOLECULETYPE *mol_type, int a, int b, int c, int d)
+{
+  int i,j,k;
+  int sorted[4];
+  sorted[0]=a;
+  sorted[1]=b;
+  sorted[2]=c;
+  sorted[3]=d;
+  for (i=0; i<4; i++)
+  {
+    for (j=i; j<4; j++)
+    {
+      if (sorted[i] > sorted[j])
+      {
+        int t = sorted[i];
+        sorted[i] = sorted[j];
+        sorted[j] = t;
+      }
+    }
+  }
+  
+  for (i=0; i<mol_type->molecule.nDihedrals; i++)
+  {
+    DIHEDRAL *dihedral = mol_type->molecule.dihedrals + i;
+
+    int sorted_ref[4];
+    sorted_ref[0] = dihedral->idxAtom1;
+    sorted_ref[1] = dihedral->idxAtom2;
+    sorted_ref[2] = dihedral->idxAtom3;
+    sorted_ref[3] = dihedral->idxAtom4;
+
+    for (j=0; j<4; j++)
+    {
+      for (k=j; k<4; k++)
+      {
+        if (sorted_ref[j] > sorted_ref[k])
+        {
+          int t = sorted_ref[j];
+          sorted[j] = sorted[k];
+          sorted[j] = t;
+        }
+      }
+    }
+
+    if (sorted[0] == sorted_ref[0] && 
+        sorted[1] == sorted_ref[1] && 
+        sorted[2] == sorted_ref[2] && 
+        sorted[3] == sorted_ref[3] )
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+//Check if requested dihedral angle exist in forcefield
+int
+is_dihedral_in_forcefield ()  //TODO
+{
+	return 1;
+}
+void
+get_dihedral_and_improper (MOLECULETYPE *mol_type)
+{
+  int i, j, k, l;
+  for (i=0; i<mol_type->molecule.nAngles; i++)
+  {
+    ANGLE *angle1 = mol_type->molecule.angles + i;
+    for (j=i; j<mol_type->molecule.nAngles; j++)
+    {
+      ANGLE *angle2 = mol_type->molecule.angles + j;
+      int atom[2][3];
+      atom[0][0] = angle1->idxAtom1;
+      atom[0][1] = angle1->idxAtom2;
+      atom[0][2] = angle1->idxAtom3;
+      atom[1][0] = angle2->idxAtom1;
+      atom[1][1] = angle2->idxAtom2;
+      atom[1][2] = angle2->idxAtom3;
+      if (atom[0][1] == atom[1][1]) // share apex
+      {
+        for (k=0; k<3; k+=2)
+        {
+          for (l=0; l<3; l+=2)      
+          {
+            if (atom[0][k]==atom[1][l] && atom[0][2-k]!=atom[0][2-l])  // share edge : improper
+            {
+              int a = 2 - k;  // unshared atom in angle1
+              int b = 2 - l;  // unshared atom in angle2
+              if (!is_in_improper (mol_type, atom[0][1], atom[0][k], atom[0][a], atom[1][b]))
+              {
+                if (is_improper_in_forcefield())
+                {
+                  mol_type->molecule.nImpropers++;
+                  mol_type->molecule.impropers = realloc (mol_type->molecule.impropers, 
+                                                       mol_type->molecule.nImpropers
+                                                       * sizeof (IMPROPER));
+                  IMPROPER *improper = mol_type->molecule.impropers + 
+                                 mol_type->molecule.nImpropers - 1;
+                  improper->idxAtom2 = atom[0][1];
+                  improper->idxAtom1 = atom[0][k];
+                  improper->idxAtom3 = atom[0][a];
+                  improper->idxAtom4 = atom[1][b];
+                }
+              }
+            }
+          }
+        }
+      }
+      else
+      {
+				if ( (atom[0][1] == atom[1][0] && atom[1][1] == atom[0][0])) // share an edge: dihedral situation A
+				{
+					int a = 2;  // unshared atom in angle1
+					int b = 2;  // unshared atom in angle2
+					if (!is_in_dihedral (mol_type, atom[0][1], atom[0][0], atom[0][a], atom[1][b]))
+					{
+						if (is_dihedral_in_forcefield())
+						{
+							mol_type->molecule.nDihedrals++;
+							mol_type->molecule.dihedrals = realloc (mol_type->molecule.dihedrals, 
+																									 mol_type->molecule.nDihedrals
+																									 * sizeof (DIHEDRAL));
+							DIHEDRAL *dihedral = mol_type->molecule.dihedrals + 
+														 mol_type->molecule.nDihedrals - 1;
+							dihedral->idxAtom2 = atom[0][1];
+							dihedral->idxAtom1 = atom[0][0];
+							dihedral->idxAtom3 = atom[0][a];
+							dihedral->idxAtom4 = atom[1][b];
+						}
+					}
+				}
+				else
+				if ( (atom[0][1] == atom[1][2] && atom[1][1] == atom[0][2])) // share an edge: dihedral situation B
+				{
+					int a = 0;  // unshared atom in angle1
+					int b = 0;  // unshared atom in angle2
+					if (!is_in_dihedral (mol_type, atom[0][1], atom[0][2], atom[0][a], atom[1][b]))
+					{
+						if (is_dihedral_in_forcefield())
+						{
+							mol_type->molecule.nDihedrals++;
+							mol_type->molecule.dihedrals = realloc (mol_type->molecule.dihedrals, 
+																									 mol_type->molecule.nDihedrals
+																									 * sizeof (DIHEDRAL));
+							DIHEDRAL *dihedral = mol_type->molecule.dihedrals + 
+														 mol_type->molecule.nDihedrals - 1;
+							dihedral->idxAtom2 = atom[0][1];
+							dihedral->idxAtom1 = atom[0][2];
+							dihedral->idxAtom3 = atom[0][a];
+							dihedral->idxAtom4 = atom[1][b];
+						}
+					}
+				}
+      }
+    }
+  }
+}
+
+void
+parse_input_dihedral_and_improper_auto (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
+{
+  int i,j;
+  
+  get_dihedral_and_improper (mol_type);
+ 
+  //Initiate Dihedrals
+  for (i=0; i<mol_type->molecule.nDihedrals; i++)
+  {
+    DIHEDRAL *dihedral = mol_type->molecule.dihedrals + i;
+    
+    for (j=0; j<tpm_system->forcefield.num_torsion_1; j++)
+    {
+      Torsion1 *t1 = tpm_system->forcefield.torsion_1+j;
+      dihedral->atom1 = mol_type->molecule.atoms + dihedral->idxAtom1;
+      dihedral->atom2 = mol_type->molecule.atoms + dihedral->idxAtom2;
+      dihedral->atom3 = mol_type->molecule.atoms + dihedral->idxAtom3;
+      dihedral->atom4 = mol_type->molecule.atoms + dihedral->idxAtom4;
+      if ( ((!strcmp(dihedral->atom1->symbol_torsion, t1->i) 
+            && !strcmp(dihedral->atom3->symbol_torsion, t1->k)) ||
+           (!strcmp(dihedral->atom1->symbol_torsion, t1->k) 
+            && !strcmp(dihedral->atom3->symbol_torsion, t1->i))) &&
+           !strcmp(dihedral->atom2->symbol_torsion, t1->j))
+      {
+        dihedral->kphi = t1->kphi;
+        dihedral->n = t1->n;
+        dihedral->phi0 = t1->phi0;
+      }
+    }
+  }
+
+  //Initiate Impropers
+  for (i=0; i<mol_type->molecule.nImpropers; i++)
+  {
+    IMPROPER *improper = mol_type->molecule.impropers + i;
+    
+    for (j=0; j<tpm_system->forcefield.num_out_of_plane; j++)
+    {
+      OutOfPlane *o1 = tpm_system->forcefield.out_of_plane+j;
+      improper->atom1 = mol_type->molecule.atoms + improper->idxAtom1;
+      improper->atom2 = mol_type->molecule.atoms + improper->idxAtom2;
+      improper->atom3 = mol_type->molecule.atoms + improper->idxAtom3;
+      improper->atom4 = mol_type->molecule.atoms + improper->idxAtom4;
+      if ( ((!strcmp(improper->atom1->symbol_out_of_plane, o1->i) 
+            && !strcmp(improper->atom3->symbol_out_of_plane, o1->k)) ||
+           (!strcmp(improper->atom1->symbol_out_of_plane, o1->k) 
+            && !strcmp(improper->atom3->symbol_out_of_plane, o1->i))) &&
+           !strcmp(improper->atom2->symbol_out_of_plane, o1->j))
+      {
+        improper->kchi = o1->kchi;
+        improper->n = o1->n;
+        improper->chi0 = o1->chi0;
+      }
+    }
+  }
+
+}
 void
 parse_input_improper (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
 {
@@ -452,29 +971,35 @@ parse_input_molecule_type (FILE *fp, MOLECULETYPE *mol_type, System *tpm_system)
   sscanf (buffer, "%d", &(mol_type->nMolecules));
   
   fgets (buffer, 200, fp);
-  sscanf (buffer, "%d %d %d %d %d", 
+  sscanf (buffer, "%d %d", 
           &(mol_type->molecule.nAtoms),
-          &(mol_type->molecule.nBonds),
-          &(mol_type->molecule.nAngles),
-          &(mol_type->molecule.nDihedrals),
-          &(mol_type->molecule.nImpropers));
+          &(mol_type->molecule.nBonds));
+	mol_type->molecule.nAngles = 0 ;
+	mol_type->molecule.nDihedrals = 0 ;
+	mol_type->molecule.nImpropers = 0 ;
 
   mol_type->molecule.atoms     = malloc (mol_type->molecule.nAtoms *
                                          sizeof (ATOM));
   mol_type->molecule.bonds     = malloc (mol_type->molecule.nBonds *
                                          sizeof (BOND));
-  mol_type->molecule.angles    = malloc (mol_type->molecule.nAngles *
+  mol_type->molecule.angles     = malloc (mol_type->molecule.nAngles *
                                          sizeof (ANGLE));
-  mol_type->molecule.dihedrals = malloc (mol_type->molecule.nDihedrals *
+  mol_type->molecule.dihedrals     = malloc (mol_type->molecule.nDihedrals *
                                          sizeof (DIHEDRAL));
-  mol_type->molecule.impropers = malloc (mol_type->molecule.nImpropers *
+  mol_type->molecule.impropers     = malloc (mol_type->molecule.nImpropers *
                                          sizeof (IMPROPER));
-
+/* Mannully input force field
   parse_input_atom (fp, mol_type, tpm_system);
   parse_input_bond (fp, mol_type, tpm_system);
   parse_input_angle (fp, mol_type, tpm_system);
   parse_input_dihedral (fp, mol_type, tpm_system);
   parse_input_improper (fp, mol_type, tpm_system);
+*/
+// Automatic grenerate force field
+  parse_input_atom_auto (fp, mol_type, tpm_system);
+  parse_input_bond_auto (fp, mol_type, tpm_system);
+  parse_input_angle_auto (fp, mol_type, tpm_system);
+  parse_input_dihedral_and_improper_auto (fp, mol_type, tpm_system);
 }
 
 void

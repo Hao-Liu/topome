@@ -7,31 +7,9 @@
 #include <X11/extensions/xf86vmode.h>
 #include "force.h"
 
-#include "system.h"
+#include "types.h"
 #include "arcball.h"
 
-/* stuff about our window grouped together */
-typedef struct {
-    Display *dpy;
-    int screen;
-    Window win;
-    GLXContext ctx;
-    XSetWindowAttributes attr;
-    Bool fs;
-    Bool doubleBuffered;
-    XF86VidModeModeInfo deskMode;
-    int x, y;
-    
-    int isClicked, isRClicked, isDragging;
-    Matrix3fT   LastRot, ThisRot;
-    Matrix4fT   Transform;
-    Point2fT    MousePt;
-    ArcBall			arcball;
-    
-    unsigned int width, height;
-    unsigned int depth;    
-		struct timeval lastTickCount;				// Tick Counter
-} GLWindow;
 
 
 //GLfloat rotTri, rotQuad;
@@ -42,4 +20,9 @@ GLvoid killGLWindow(GLWindow *GLWin);
 Bool createGLWindow(char* title, int width, int height, int bits, 
 										Bool fullscreenflag, GLWindow *GLWin);
 void GraphicOutput(System *system, GLWindow *GLWin);
+void 
+init_graphic(System *system, GLWindow *gl_window);
+void
+release_graphic (GLWindow *gl_window);
+void graphic_output (System *system, GLWindow *GLWin);
 #endif //_tpm_graphic_h

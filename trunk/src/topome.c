@@ -27,6 +27,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <libintl.h>
 #include <getopt.h>
 #include "verbose.h"
@@ -53,9 +54,8 @@ main (int argc, char **argv)
   parse_option (&input_file, &graphic_enabled, &verbose_enabled,
                       argc, argv);
   
-  ForceField forcefield;
-  memset (&forcefield, 0, sizeof(ForceField));
-  init_forcefield ("frc/cvff.frc", &forcefield);
+  memset (&system.forcefield, 0, sizeof(ForceField));
+  init_forcefield ("frc/cvff.frc", &system.forcefield);
   // initialize system
   init_system (&system, input_file);
 
