@@ -163,10 +163,28 @@ void
 parse_input_global (FILE *fp, System *tpm_system)
 {
   char buffer[200];
-
-  fgets (buffer, 200, fp);
-  sscanf (buffer, "%d %lf %lf", &(tpm_system->number_step), 
-          &(tpm_system->relaxed_dimension), &(tpm_system->radius_cut));
+  
+	tpm_system->verbose_interval = 1000;
+  tpm_system->graphic_interval = 10;
+  tpm_system->time_interval = 0.5;
+  tpm_system->relax_ratio      = 0.999;
+  tpm_system->expansion_ratio  = 5.0;
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%d", &(tpm_system->verbose_interval));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%d", &(tpm_system->graphic_interval));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%lf", &(tpm_system->time_interval));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%lf", &(tpm_system->relax_ratio));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%lf", &(tpm_system->expansion_ratio));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%d", &(tpm_system->number_step));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%lf", &(tpm_system->relaxed_dimension));
+  fgets (buffer, 200, fp); 
+  sscanf (buffer, "%lf", &(tpm_system->radius_cut));
 }
 
 void
@@ -1025,12 +1043,6 @@ parse_input_molecule (FILE *fp, System *tpm_system)
 void 
 parse_input_file (FILE *fp, System *tpm_system)
 {
-  tpm_system->verbose_interval = 100;
-  tpm_system->graphic_interval = 1;
-  tpm_system->time_interval = 0.5;
-  tpm_system->relax_ratio      = 0.999;
-  tpm_system->expansion_ratio  = 5.0;
-  
   parse_input_global (fp, tpm_system);
 
   tpm_system->dimension = tpm_system->relaxed_dimension
