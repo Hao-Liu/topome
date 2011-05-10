@@ -529,6 +529,7 @@ calculate_pair_force_grid (System *tpm_system)
 	double coulomb_epsilon = 0.01;
 	double lj_epsilon = 0.001;
 	double soft = 0.001;
+	double A,B;
 
   double radius_cut_square = tpm_system->radius_cut*tpm_system->radius_cut;
   int number_slice_square = tpm_system->number_slice*tpm_system->number_slice;
@@ -584,17 +585,24 @@ calculate_pair_force_grid (System *tpm_system)
 
 									invr6 = invr2 * invr2 * invr2;
 									
-									lj_coefficient = 4.0 * lj_epsilon * (6.0 - 12.0 * invr6) *
-									                 invr6 * invr2;
-						
+									A = sqrt ( atom1->nonbond_a * atom2->nonbond_a );
+									B = sqrt ( atom1->nonbond_b * atom2->nonbond_b );
+
+									lj_coefficient = (6.0 * B - 12.0 * invr6 * A) * 
+																		invr6 * invr2 * 4.184e-4;
+									
+									//lj_coefficient = - 4.0 * lj_epsilon * (6.0 - 12.0 * invr6) *
+									//                 invr6 * invr2;
 									force_coefficient = (lj_coefficient - coulomb_coefficient) / 
-									                    atom1->mass;
+																			atom1->mass;
 									atom1->ax += force_coefficient * dx;
 									atom1->ay += force_coefficient * dy;
 									atom1->az += force_coefficient * dz;
 									
-									tpm_system->potential_energy -= 4.0 * lj_epsilon * 
-									                                (1.0 - 1.0 * invr6) * invr6;
+									tpm_system->potential_energy -= (B - A * invr6) 
+																									* invr6 * 4.184e-4;
+									//tpm_system->potential_energy -= 4.0 * lj_epsilon * 
+									//                                (1.0 - 1.0 * invr6) * invr6;
 									tpm_system->potential_energy += coulomb_coefficient * 
 									                                atom2->charge * 
 									                                atom1->charge * invr;
@@ -619,6 +627,7 @@ calculate_pair_force_all (System *tpm_system)
 	double lj_epsilon = 0.001;
 	double soft = 0.001;
   double radius_cut_square = tpm_system->radius_cut*tpm_system->radius_cut;
+	double A, B;
 
 	for (i=0; i<tpm_system->number_molecule; i++)
 	{
@@ -647,18 +656,21 @@ calculate_pair_force_all (System *tpm_system)
 					                      atom1->charge * invr * invr2;
 
 					invr6 = invr2 * invr2 * invr2;
-					
+/*					
 					lj_coefficient = 4.0 * lj_epsilon * (6.0 - 12.0 * invr6) *
 					                 invr6 * invr2;
-		
+*/		
+					A = sqrt ( atom1->nonbond_a * atom2->nonbond_a );
+					B = sqrt ( atom1->nonbond_b * atom2->nonbond_b );
+					lj_coefficient = (6.0 * B - 12.0 * invr6 * A) * 
+														invr6 * invr2 * 4.184e-4;
 					force_coefficient = (lj_coefficient - coulomb_coefficient) / 
 					                    atom1->mass;
 					atom1->ax += force_coefficient * dx;
 					atom1->ay += force_coefficient * dy;
 					atom1->az += force_coefficient * dz;
 					
-					tpm_system->potential_energy -= 4.0 * lj_epsilon * 
-					                                (1.0 - 1.0 * invr6) * invr6;
+					tpm_system->potential_energy -= (B - A * invr6) * invr6 * 4.184e-4;
 					tpm_system->potential_energy += coulomb_coefficient * 
 					                                atom2->charge * 
 					                                atom1->charge * invr;
