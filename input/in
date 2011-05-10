@@ -2,13 +2,13 @@
 10      graphic interval
 0.5     time interval
 0.999  relax ratio
-5.0     expansion ratio
+8.0     expansion ratio
 1000000 step number
-29.0    relaxed dimension 
+9.0    relaxed dimension 
 2.8     radius cut
 0 0 0 0
 1
-10
+20
 20 21
     7.1200    0.0681    0.0000 cp     0
     7.1200   -2.7319    0.0000 cp     0

@@ -472,7 +472,26 @@ calculate_force (System *tpm_system)
 	calculate_pair_force_grid (tpm_system);
 }
 
-
+void
+relax_integrate (System *tpm_system)
+{
+	int i, j;
+	for (i=0; i<tpm_system->number_molecule; i++)
+	{
+		MOLECULE *mol = tpm_system->molecule+i;
+		for (j=0; j<mol->nAtoms; j++)
+		{
+			ATOM *atom = mol->atoms+j;
+			atom->x = atom->x * tpm_system->relax_ratio;
+			atom->y = atom->y * tpm_system->relax_ratio;
+			atom->z = atom->z * tpm_system->relax_ratio;
+			
+			atom->oldx = atom->oldx * tpm_system->relax_ratio;
+			atom->oldy = atom->oldy * tpm_system->relax_ratio;
+			atom->oldz = atom->oldz * tpm_system->relax_ratio;
+		}
+	}
+}
 void
 integrate (int relax, System *tpm_system)
 {
@@ -488,6 +507,18 @@ integrate (int relax, System *tpm_system)
 		for (j=0; j<mol->nAtoms; j++)
 		{
 			ATOM *atom = mol->atoms+j;
+			
+			if (relax)
+			{
+				atom->x = atom->x * tpm_system->relax_ratio;
+				atom->y = atom->y * tpm_system->relax_ratio;
+				atom->z = atom->z * tpm_system->relax_ratio;
+				
+				atom->oldx = atom->oldx * tpm_system->relax_ratio;
+				atom->oldy = atom->oldy * tpm_system->relax_ratio;
+				atom->oldz = atom->oldz * tpm_system->relax_ratio;
+			}
+
 			newx = 2.0*atom->x - atom->oldx + atom->ax*dt2;
 			newy = 2.0*atom->y - atom->oldy + atom->ay*dt2;
 			newz = 2.0*atom->z - atom->oldz + atom->az*dt2;
@@ -495,19 +526,10 @@ integrate (int relax, System *tpm_system)
 			atom->oldx = atom->x;
 			atom->oldy = atom->y;
 			atom->oldz = atom->z;
-			
-			if(relax)
-			{
-			  dx = newx - atom->oldx * tpm_system->relax_ratio;
-			  dy = newy - atom->oldy * tpm_system->relax_ratio;
-			  dz = newz - atom->oldz * tpm_system->relax_ratio;
-			}
-			else
-			{
-			  dx = newx - atom->oldx;
-			  dy = newy - atom->oldy;
-			  dz = newz - atom->oldz;
-			}
+			  
+			dx = newx - atom->oldx;
+			dy = newy - atom->oldy;
+			dz = newz - atom->oldz;
 
       get_minimun_image (&dx, &dy, &dz, tpm_system);
 
@@ -515,16 +537,32 @@ integrate (int relax, System *tpm_system)
 			atom->vy = dy*inv_dt;
 			atom->vz = dz*inv_dt;
 			
-			if (newx < 0.0)                    newx += tpm_system->dimension;
-			if (newy < 0.0)                    newy += tpm_system->dimension;
-			if (newz < 0.0)                    newz += tpm_system->dimension;
-			if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
-			if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
-			if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
+			if(relax)
+			{
+				if (newx < 0.0)                    newx += tpm_system->dimension;
+				if (newy < 0.0)                    newy += tpm_system->dimension;
+				if (newz < 0.0)                    newz += tpm_system->dimension;
+				if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
+				if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
+				if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
 			
-			atom->x = newx;
-			atom->y = newy;
-			atom->z = newz;
+				atom->x = newx;
+				atom->y = newy;
+				atom->z = newz;
+			}
+			else 
+			{
+				if (newx < 0.0)                    newx += tpm_system->dimension;
+				if (newy < 0.0)                    newy += tpm_system->dimension;
+				if (newz < 0.0)                    newz += tpm_system->dimension;
+				if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
+				if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
+				if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
+			
+				atom->x = newx;
+				atom->y = newy;
+				atom->z = newz;
+			}
 		}
 	}
 }
