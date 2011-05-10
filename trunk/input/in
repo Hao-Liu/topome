@@ -1,15 +1,15 @@
 1000    verbose interval
-10      graphic interval
-0.5     time interval
-0.999  relax ratio
-8.0     expansion ratio
-1000000 step number
-9.0    relaxed dimension 
+100     graphic interval
+1       time interval
+0.999   relax ratio
+5.0     expansion ratio
+100000  step number
+11.0    relaxed dimension 
 2.8     radius cut
-1
-10
-20 21
-    7.1200    0.0681    0.0000 cp     0
+1				number of molecular types
+10      number of molecules of following type
+20 21   number of atoms and bonds in a molecule
+    7.1200    0.0681    0.0000 cp     0  coordination type charge
     7.1200   -2.7319    0.0000 cp     0
     7.1200    1.4681    0.0000 cp     0
     8.3324    2.1681    0.0000 np     0
@@ -29,7 +29,7 @@
     5.9076   -0.6319    0.0000 h     0
     7.1200   -4.1319    0.0000 cp     0
     5.9076    2.1681    0.0000 h     0
-  1  3  1  
+  1  3  1  first atom, second atom, type 
   7  1  2  
   1 18  1  
  19  2  2  
