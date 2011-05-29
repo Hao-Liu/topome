@@ -261,6 +261,7 @@ typedef struct
 	double charge;
   double nonbond_a;
   double nonbond_b;
+	int    global_idx;
 } ATOM;
 
 typedef struct
@@ -397,6 +398,8 @@ typedef struct
 	MOLECULETYPE *molecule_type;
 	int number_molecule;
 	MOLECULE *molecule;
+	int number_atom;
+	ATOM **atom;
   ForceField forcefield;
 } System;
 

@@ -24,7 +24,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
  */
-
+#include <sys/time.h>
 
 #include <libintl.h>
 #include <stdio.h>
@@ -98,7 +98,7 @@ calculate_bond_force (System *tpm_system)
 			dr = r -r0;
 			force_coefficent = 2.0 * K * dr / r * 4.184E-4;
 			
-			tpm_system->potential_energy += K * dr *dr;
+			tpm_system->potential_energy += K * dr *dr * 4.184e-4;
 			
 			atom1->ax -= force_coefficent * dx / atom1->mass;
 			atom1->ay -= force_coefficent * dy / atom1->mass;
@@ -518,7 +518,6 @@ calculate_improper_force (System *tpm_system)
 }
 
 
-
 //Pair force implemented grid scheme
 void
 calculate_pair_force_grid (System *tpm_system)
@@ -526,8 +525,7 @@ calculate_pair_force_grid (System *tpm_system)
 	int i,j,k,l,m,n,o,p,im,in,io;
 	double dx, dy, dz, r2, invr2, invr, invr6;
 	double lj_coefficient, coulomb_coefficient, force_coefficient;
-	double coulomb_epsilon = 0.01;
-	double lj_epsilon = 0.001;
+//	double coulomb_epsilon = 0.01;
 	double soft = 0.001;
 	double A,B;
 
@@ -580,8 +578,8 @@ calculate_pair_force_grid (System *tpm_system)
 									invr2 = 1.0 / r2; 
 									invr = sqrt (invr2);
 
-									coulomb_coefficient = coulomb_epsilon * atom2->charge * 
-									                      atom1->charge * invr * invr2;
+									coulomb_coefficient = atom2->charge * atom1->charge * invr 
+																				* invr2 * 4.184e-4;
 
 									invr6 = invr2 * invr2 * invr2;
 									
@@ -591,8 +589,6 @@ calculate_pair_force_grid (System *tpm_system)
 									lj_coefficient = (6.0 * B - 12.0 * invr6 * A) * 
 																		invr6 * invr2 * 4.184e-4;
 									
-									//lj_coefficient = - 4.0 * lj_epsilon * (6.0 - 12.0 * invr6) *
-									//                 invr6 * invr2;
 									force_coefficient = (lj_coefficient - coulomb_coefficient) / 
 																			atom1->mass;
 									atom1->ax += force_coefficient * dx;
@@ -601,11 +597,8 @@ calculate_pair_force_grid (System *tpm_system)
 									
 									tpm_system->potential_energy -= (B - A * invr6) 
 																									* invr6 * 4.184e-4;
-									//tpm_system->potential_energy -= 4.0 * lj_epsilon * 
-									//                                (1.0 - 1.0 * invr6) * invr6;
-									tpm_system->potential_energy += coulomb_coefficient * 
-									                                atom2->charge * 
-									                                atom1->charge * invr;
+									tpm_system->potential_energy += atom2->charge * atom1->charge
+																									* invr * 4.184e-4;
 								}
 							}
 						}
@@ -624,7 +617,6 @@ calculate_pair_force_all (System *tpm_system)
 	double dx, dy, dz, r2, invr2, invr, invr6;
 	double lj_coefficient, coulomb_coefficient, force_coefficient;
 	double coulomb_epsilon = 0.01;
-	double lj_epsilon = 0.001;
 	double soft = 0.001;
   double radius_cut_square = tpm_system->radius_cut*tpm_system->radius_cut;
 	double A, B;
@@ -803,35 +795,31 @@ calculate_force (System *tpm_system)
 	}
   
   //reset potential energy
+//struct timeval tv, tickCount;
+//gettimeofday( &tv, NULL );
+//tickCount.tv_usec = tv.tv_usec;
+
 	tpm_system->potential_energy = 0.0;
 
 	calculate_bond_force (tpm_system);
 	calculate_angle_force (tpm_system);
 	calculate_dihedral_force (tpm_system);
 	calculate_improper_force (tpm_system);
+
+//gettimeofday( &tv, NULL );
+//tickCount.tv_usec = tv.tv_usec -tickCount.tv_usec;
+//printf("%ld ", tickCount.tv_usec);
+//tickCount.tv_usec = tv.tv_usec;
+
 	calculate_pair_force_grid (tpm_system);
+
+//gettimeofday( &tv, NULL );
+//tickCount.tv_usec = tv.tv_usec -tickCount.tv_usec;
+//printf("%ld \n", tickCount.tv_usec);
+//tickCount.tv_usec = tv.tv_usec;
+
 }
 
-void
-relax_integrate (System *tpm_system)
-{
-	int i, j;
-	for (i=0; i<tpm_system->number_molecule; i++)
-	{
-		MOLECULE *mol = tpm_system->molecule+i;
-		for (j=0; j<mol->nAtoms; j++)
-		{
-			ATOM *atom = mol->atoms+j;
-			atom->x = atom->x * tpm_system->relax_ratio;
-			atom->y = atom->y * tpm_system->relax_ratio;
-			atom->z = atom->z * tpm_system->relax_ratio;
-			
-			atom->oldx = atom->oldx * tpm_system->relax_ratio;
-			atom->oldy = atom->oldy * tpm_system->relax_ratio;
-			atom->oldz = atom->oldz * tpm_system->relax_ratio;
-		}
-	}
-}
 void
 integrate (int relax, System *tpm_system)
 {
@@ -839,7 +827,7 @@ integrate (int relax, System *tpm_system)
 	double newx, newy, newz, dx, dy, dz;
 	double dt     = tpm_system->time_interval;
 	double dt2    = dt * dt;
-	double inv_dt = 1.0 / dt;
+	double inv_dt2= 0.5 / dt;
   
 	for (i=0; i<tpm_system->number_molecule; i++)
 	{
@@ -863,46 +851,31 @@ integrate (int relax, System *tpm_system)
 			newy = 2.0*atom->y - atom->oldy + atom->ay*dt2;
 			newz = 2.0*atom->z - atom->oldz + atom->az*dt2;
 			
-			atom->oldx = atom->x;
-			atom->oldy = atom->y;
-			atom->oldz = atom->z;
-			  
+			if (newx < 0.0)                    newx += tpm_system->dimension;
+			if (newy < 0.0)                    newy += tpm_system->dimension;
+			if (newz < 0.0)                    newz += tpm_system->dimension;
+			if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
+			if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
+			if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
+
 			dx = newx - atom->oldx;
 			dy = newy - atom->oldy;
 			dz = newz - atom->oldz;
 
       get_minimum_image (&dx, &dy, &dz, tpm_system);
+      
+      atom->vx = dx * inv_dt2;
+      atom->vy = dy * inv_dt2;
+      atom->vz = dz * inv_dt2;
+			
 
-			atom->vx = dx*inv_dt;
-			atom->vy = dy*inv_dt;
-			atom->vz = dz*inv_dt;
-			
-			if(relax)
-			{
-				if (newx < 0.0)                    newx += tpm_system->dimension;
-				if (newy < 0.0)                    newy += tpm_system->dimension;
-				if (newz < 0.0)                    newz += tpm_system->dimension;
-				if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
-				if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
-				if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
-			
-				atom->x = newx;
-				atom->y = newy;
-				atom->z = newz;
-			}
-			else 
-			{
-				if (newx < 0.0)                    newx += tpm_system->dimension;
-				if (newy < 0.0)                    newy += tpm_system->dimension;
-				if (newz < 0.0)                    newz += tpm_system->dimension;
-				if (newx >= tpm_system->dimension) newx -= tpm_system->dimension;
-				if (newy >= tpm_system->dimension) newy -= tpm_system->dimension;
-				if (newz >= tpm_system->dimension) newz -= tpm_system->dimension;
-			
-				atom->x = newx;
-				atom->y = newy;
-				atom->z = newz;
-			}
+			atom->oldx = atom->x;
+			atom->oldy = atom->y;
+			atom->oldz = atom->z;
+		
+			atom->x = newx;
+			atom->y = newy;
+			atom->z = newz;
 		}
 	}
 }

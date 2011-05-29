@@ -186,7 +186,6 @@ int RenderSystem(System *system, GLWindow *GLWin)
 	glTranslatef(minusHalfDim, minusHalfDim, minusHalfDim);
 
 	RenderCell(system);
-//	RenderConnectivity(system);
 	RenderAtoms(system);
 	RenderBonds(system);
   
@@ -236,6 +235,16 @@ int initGL(GLWindow *GLWin)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST); // Make round points, not square points
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);  // Antialias the lines
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPointSize(4);
+    glLineWidth(2);
+
     /* we use resizeGLScene once to set up our initial perspective */
     resizeGLScene(GLWin->width, GLWin->height);
     ArcBallInit(GLWin->width, GLWin->height, &(GLWin->arcball));
@@ -490,7 +499,7 @@ init_graphic(System *system, GLWindow *gl_window)
   gl_window->isClicked=0;
   gl_window->isRClicked=0;
   gl_window->isDragging=0;
-  createGLWindow("TOPOME", 640, 480, 24, gl_window->fs, gl_window);
+  createGLWindow("TOPOME", 800, 600, 24, gl_window->fs, gl_window);
 }
 
 void
