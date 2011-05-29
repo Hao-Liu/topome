@@ -224,7 +224,7 @@ init_molecule_type (int *mol_index, MOLECULETYPE *mol_type, System *tpm_system)
 void 
 create_molecule (System *tpm_system)
 {
-	int i=0;
+	int i=0, j=0;
 	
 	//get total number of molecules in the system
 	tpm_system->number_molecule = 0;
@@ -245,6 +245,34 @@ create_molecule (System *tpm_system)
 	  
     init_molecule_type (&mol_index, mol_type, tpm_system);
 	}
+	
+	//calculate total number of atoms
+	tpm_system->number_atom = 0;
+	for (i=0; i<tpm_system->number_molecule; i++)
+	{
+		MOLECULE *mol = tpm_system->molecule + i;
+		
+		tpm_system->number_atom += mol->nAtoms;
+	}
+	
+	//allocate memory for global atoms list
+	tpm_system->atom = malloc ( tpm_system->number_atom * sizeof (ATOM *));
+
+	//initialize global atoms list
+	int atom_index=0;
+	for (i=0; i<tpm_system->number_molecule; i++)
+	{
+		MOLECULE *mol = tpm_system->molecule + i;
+
+		for (j=0; j<mol->nAtoms; j++)
+		{
+			ATOM *atom = mol->atoms + j;
+			tpm_system->atom[atom_index] = atom; 
+			atom->global_idx = atom_index;
+		}
+
+		atom_index++;
+	}
 }
 
 void 
@@ -254,7 +282,8 @@ init_system (System *tpm_system, char *input_file)
 
   if (fp == NULL)
   {
-  	error (EXIT_FAILURE, errno, gettext ("Can't open input file %s"), input_file);
+  	error (EXIT_FAILURE, errno, gettext ("Can't open input file %s"), 
+						input_file);
   }
   
   //read all information in the input file
@@ -306,13 +335,13 @@ relax_system (System *tpm_system, int graphic_enabled, GLWindow *gl_window)
     tpm_system->half_dimension = tpm_system->dimension*0.5;
     update_system (1, tpm_system);
 		
-		if(graphic_enabled && (i % tpm_system->graphic_interval == 0))
+		if(graphic_enabled && (i++ % tpm_system->graphic_interval == 0))
 		{
 			graphic_output (tpm_system, gl_window);
 		}
   }
   tpm_system->half_dimension = tpm_system->dimension*0.5;
-  reset_velosity (tpm_system);
+	reset_velosity (tpm_system);
 }
 
 void
